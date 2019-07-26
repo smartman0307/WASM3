@@ -9,6 +9,10 @@
 #ifndef m3_exec_h
 #define m3_exec_h
 
+// TODO: all these functions could move over to the .c at some point. normally, i'd say screw it,
+// but it might prove useful to be able to compile m3_exec alone w/ optimizations while the remaining
+// code is at debug O0
+
 #include "m3_exec_defs.h"
 
 #include <math.h>
@@ -738,47 +742,26 @@ d_m3Op (PreserveSetSlot_f)
 }
 
 
-//#define d_outOfBounds return c_m3Err_trapOutOfBoundsMemoryAccess
-
-m3ret_t ReportOutOfBoundsMemoryError (pc_t i_pc, u8 * i_mem, u32 i_offset);
-
-#define d_outOfBounds { printf ("%d %p\n", operand, end);  return ReportOutOfBoundsMemoryError (_pc, _mem, operand); }
-
-
-#define d_m3Load(REG,DEST_TYPE,SRC_TYPE) static inline m3ret_t vectorcall op_##DEST_TYPE##_Load_##SRC_TYPE##_r (d_m3OpSig) \
-{ 														\
-	u32 offset = immediate (u32);						\
-	u32 operand = (u32) _r0;							\
-														\
-	u8 * src8 = _mem + operand + offset;				\
-	u8 * end = * ((u8 **) _mem - 1);					\
-														\
-	if (src8 + sizeof (SRC_TYPE) <= end)				\
-	{													\
-		REG = (DEST_TYPE) (* (SRC_TYPE *) src8);		\
-		return nextOp ();								\
-	}													\
-	else d_outOfBounds;									\
-} 														\
-static inline m3ret_t vectorcall op_##DEST_TYPE##_Load_##SRC_TYPE##_s (d_m3OpSig)		\
-{ 														\
-	u32 operand = * (u32 *) (_sp + immediate (i32));	\
-	u32 offset = immediate (u32);						\
-														\
-	u8 * src8 = _mem + operand + offset;				\
-	u8 * end = * ((u8 **) _mem - 1);					\
-														\
-	if (src8 + sizeof (SRC_TYPE) <= end)				\
-	{													\
-		REG = (DEST_TYPE) (* (SRC_TYPE *) src8);		\
-		return nextOp ();								\
-	}													\
-	else d_outOfBounds;									\
+#define d_m3Load(REG,DEST,SRC) static inline m3ret_t vectorcall op_##DEST##_Load_##SRC##_r (d_m3OpSig) \
+{ 																			\
+	u32 offset = immediate (u32);												\
+	u32 operand = (u32) _r0;												\
+	SRC * source = (SRC *) (_mem + operand + offset);						\
+	REG = (DEST) * source;													\
+	return nextOp ();														\
+} 																			\
+static inline m3ret_t vectorcall op_##DEST##_Load_##SRC##_s (d_m3OpSig)		\
+{ 																			\
+	u32 operand = * (u32 *) (_sp + immediate (i32));							\
+	u32 offset = immediate (u32);												\
+	SRC * source = (SRC *) (_mem + operand + offset);						\
+	REG = (DEST) * source;													\
+	return nextOp ();														\
 }
 //	printf ("get: %d -> %d\n", operand + offset, (i64) REG);				\
 
 
-#define d_m3Load_i(DEST_TYPE, SRC_TYPE) d_m3Load(_r0, DEST_TYPE, SRC_TYPE)
+#define d_m3Load_i(DEST, SRC) d_m3Load(_r0, DEST, SRC)
 
 d_m3Load_i (i32, i32);
 
@@ -797,6 +780,12 @@ d_m3Op  (f64_Store)
 
 	return nextOp ();
 }
+
+//#define d_outOfBounds return c_m3Err_trapOutOfBoundsMemoryAccess
+
+void ReportOutOfBoundsMemoryError (pc_t i_pc, u8 * i_mem, u32 i_offset);
+
+#define d_outOfBounds { printf ("%d %p\n", operand, end);  ReportOutOfBoundsMemoryError (_pc, _mem, operand);  return c_m3Err_trapOutOfBoundsMemoryAccess; }
 
 
 #define d_m3Store_i(SRC_TYPE, SIZE_TYPE) 				\
@@ -837,11 +826,11 @@ d_m3Op  (SRC_TYPE##_Store_##SIZE_TYPE##_rs)				\
 }														\
 d_m3Op  (SRC_TYPE##_Store_##SIZE_TYPE##_ss)				\
 {														\
-	i32 slot = immediate (i32);								\
+	i32 slot = immediate (i32);							\
 	SRC_TYPE value = * (SRC_TYPE *) (_sp + slot);		\
 														\
-	u32 operand = * (u32 *) (_sp + immediate (i32));		\
-	u32 offset = immediate (u32);							\
+	u32 operand = * (u32 *) (_sp + immediate (i32));	\
+	u32 offset = immediate (u32);						\
 	operand += offset;									\
 														\
 	u8 * end = * ((u8 **) _mem - 1);					\
