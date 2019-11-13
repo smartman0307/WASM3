@@ -14,8 +14,6 @@ This is an (experimental) high performance WebAssembly interpreter written in C.
 
 ## Status
 
-WebAssembly Core Specification conformance: **92%**
-
 Minimum useful system requirements: **~64Kb** for code and **~10Kb** RAM
 
 `wasm3` currently runs on a wide range of [platforms](/platforms):
@@ -34,7 +32,7 @@ Minimum useful system requirements: **~64Kb** for code and **~10Kb** RAM
 - <img src="extra/wasm-symbol.svg" width="18" height="18" /> `TODO:` run on `wasm3` (should be self-hosting)
 
 `wasm3` is built on top of [Steven Massey](https://github.com/soundandform)'s novel [interpreter topology](/source/README.md), with:
-- Aim at Wasm 1.0 spec conformance
+- Aim at Wasm 1.0 spec conformance (not there yet)
 - Lot's of bugfixes
 - Portability improvements
 
