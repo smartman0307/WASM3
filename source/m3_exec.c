@@ -15,9 +15,7 @@ m3ret_t ReportOutOfBoundsMemoryError (pc_t i_pc, u8 * i_mem, u32 i_offset)
     M3MemoryHeader * info = (M3MemoryHeader*)(i_mem) - 1;
     u8 * mem8 = i_mem + i_offset;
 
-    ErrorRuntime (c_m3Err_trapOutOfBoundsMemoryAccess, info->runtime,
-				  "memory bounds: [%p %p); accessed: %p; offset: %u overflow: %zd bytes",
-				  i_mem, info->end, mem8, i_offset, mem8 - (u8 *) info->end);
+    ErrorModule (c_m3Err_trapOutOfBoundsMemoryAccess, info->module, "memory bounds: [%p %p); accessed: %p; offset: %u overflow: %zd bytes", i_mem, info->end, mem8, i_offset, mem8 - (u8 *) info->end);
 
     return c_m3Err_trapOutOfBoundsMemoryAccess;
 }
@@ -85,34 +83,32 @@ d_m3OpDef  (CallIndirect)
 
 d_m3OpDef  (MemCurrent)
 {
-    IM3Runtime runtime            = immediate (IM3Runtime);
+    IM3Module module            = immediate (IM3Module);
 
-    _r0 = runtime->memory.numPages;
+    IM3Memory io_memory = &module->memory;
+    size_t actualSize = io_memory->virtualSize; //(u8 *) memory->mallocated->end - (u8 *) memory->wasmPages;
+
+    _r0 = actualSize / c_m3MemPageSize;
 
     return nextOp ();
 }
 
-
 d_m3OpDef  (MemGrow)
 {
-    IM3Runtime runtime            = immediate (IM3Runtime);
+    IM3Module module            = immediate (IM3Module);
 
-    IM3Memory memory = & runtime->memory;
+    IM3Memory io_memory = &module->memory;
+    size_t actualSize = io_memory->virtualSize;
 
-    size_t requiredPages = memory->numPages + _r0;
+    size_t requiredSize = actualSize + (_r0 * c_m3MemPageSize);
 
-    _r0 = memory->numPages;
+    io_memory->virtualSize = requiredSize;
 
-	// FIX/FINISH (smassey): reallocation does need to occur here. and, op_Loop needs to refresh _mem arg from runtime
-	
-	/* m3ret_t r = ResizeMemory (& _mem, runtime, requiredPages);
+    _r0 = actualSize / c_m3MemPageSize;
 
-	 if (r)
-		returrn r;
-	 else
-	 
-	*/
-	
+    // TODO: cannot do an actual reallocation here, as _mem will only be affected in subsequent operations
+    // i.e. return ((IM3Operation)(* _pc))(_pc + 1, _sp, io_memory->wasmPages, _r0, _fp0);
+
     return nextOp ();
 }
 

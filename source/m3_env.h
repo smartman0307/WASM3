@@ -70,25 +70,15 @@ cstr_t      SPrintFunctionArgList       (IM3Function i_function, m3stack_t i_sp)
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-typedef struct M3MemoryInfo
-{
-    u32     initPages;
-    u32     maxPages;
-}
-M3MemoryInfo;
-
-
 typedef struct M3Memory
 {
     M3MemoryHeader *        mallocated;
-    u8 *                    wasmPages;                  // = mallocated + sizeof (M3MemoryHeader)
+    u8 *                    wasmPages;                  // = mallocated + sizeof (M3Memory)
 
-	size_t					numPages;
-	
-//    size_t                  virtualSize;
+    size_t                  virtualSize;
 
-//    size_t                  heapOffset;
-//    size_t                  heapAllocated;
+    size_t                  heapOffset;
+    size_t                  heapAllocated;
 }
 M3Memory;
 
@@ -163,13 +153,9 @@ typedef struct M3Module                 // TODO add env owner? also discriminate
     IM3Function *           table0;
     u32                     table0Size;
 
-//    M3Memory                memory;
-    
-	M3MemoryInfo			memoryInfo;
-	bool					memoryImported;
-	
-//    u32                     memoryInitLength;
-//    u32                     memoryMaxLength;
+    M3Memory                memory;
+    bytes_t                 memorySection;
+    bytes_t                 memorySectionEnd;
 
 //  m3reg_t *               globalMemory;
 
@@ -199,8 +185,6 @@ typedef struct M3Runtime
     u32                     numStackSlots;
 
     M3Result                runtimeError;
-
-	M3Memory                memory;
 
 //  u32                     numFuncTypes;
 //  M3FuncType *            funcTypes;
