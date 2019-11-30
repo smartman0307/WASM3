@@ -302,28 +302,27 @@ else:
 
         "conversions",
         "stack", "fac",
-        "call", "call_indirect",
-        "left-to-right",
+        "call",
         "break-drop",
         "forward",
         "func_ptrs",
         "endianness",
 
         #--- Almost ready ---
+        #"left-to-right",    -> need to implement float select
+        #"call_indirect",    -> need to add type-checking
         #"int_literals",     -> stack underflow
-        #"memory_trap", "address",     -> init memory size + track memory bounds
-        #"float_memory",
-        #"memory_redundancy", "memory_grow",
 
         #--- TODO ---
         #"get_local", "set_local", "tee_local",
-        #"if", "loop", "labels", "block", "br", "br_if", "br_table", "return",
+        #"if", "loop", "block", "br", "br_if", "br_table", "return",
         #"nop", "unreachable",
-        #"align", "memory",
+        #"address", "align", "memory",
         #"float_literals",
         #"globals",
         #"func",
         #"float_exprs",
+        #"float_memory",
         #"elem",
         #"switch",
     ]))
