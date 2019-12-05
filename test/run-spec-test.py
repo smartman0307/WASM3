@@ -8,10 +8,8 @@
 #   ./run-spec-test.py --exec ../custom_build/wasm3
 #
 
-# TODO
-# - Get more tests from: https://github.com/microsoft/ChakraCore/tree/master/test/WasmSpec
-# - Fix "Empty Stack" check
-# - Check Canonical NaN and Arithmetic NaN separately
+# TODO Get more tests from:
+# https://github.com/microsoft/ChakraCore/tree/master/test/WasmSpec
 
 import argparse
 import os
@@ -178,11 +176,6 @@ specDir = "core/spec/"
 
 stats = dotdict(total_run=0, skipped=0, failed=0, crashed=0, success=0, missing=0)
 
-# Convert some trap names from the original spec
-trapmap = {
-  "unreachable": "unreachable executed"
-}
-
 def runInvoke(test):
     wasm = os.path.relpath(os.path.join(coreDir, test.module), curDir)
     cmd = [args.exec, wasm, test.action.field]
@@ -254,9 +247,6 @@ def runInvoke(test):
             warning(f"Test {test.source} specifies multiple results")
             expect = "result <Multiple>"
     elif "expected_trap" in test:
-        if test.expected_trap in trapmap:
-            test.expected_trap = trapmap[test.expected_trap]
-
         expect = "trap " + str(test.expected_trap)
     else:
         expect = "<Unknown>"
