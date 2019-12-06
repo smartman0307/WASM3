@@ -15,7 +15,10 @@
 # - Fix names.wast
 
 import argparse
-import os, sys, glob, time
+import os
+import os.path
+import glob
+import sys
 import json
 import re
 import struct
@@ -76,14 +79,10 @@ class dotdict(dict):
 
 def warning(msg):
     log.write("Warning: " + msg + "\n")
-    log.flush()
     print(f"{ansi.WARNING}Warning:{ansi.ENDC} {msg}")
 
-def fatal(msg):
-    log.write("Fatal: " + msg + "\n")
-    log.flush()
-    print(f"{ansi.FAIL}Fatal:{ansi.ENDC} {msg}")
-    sys.exit(1)
+def run(cmd):
+    return subprocess.check_output(cmd, shell=True)
 
 def filename(p):
     _, fn = os.path.split(p)
@@ -95,7 +94,7 @@ def binaryToFloat(num, t):
     elif t == "f64":
         return struct.unpack('!d', struct.pack('!Q', int(num)))[0]
     else:
-        fatal(f"Unknown type '{t}'")
+        raise(Exception(f"Unknown type: {t}"))
 
 #
 # Value format options
@@ -179,15 +178,14 @@ class Wasm3():
     def __init__(self, executable):
         self.exe = executable
         self.p = None
-        self.timeout = 3.0
 
-    def load(self, fn):
+    def load(self, wasm):
         if self.p:
             self.terminate()
 
-        self.loaded = fn
+        self.wasm = wasm
         self.p = Popen(
-            [self.exe, "--repl", fn],
+            [self.exe, "--repl", wasm],
             shell = False,
             bufsize=0, stdin=PIPE, stdout=PIPE, stderr=STDOUT
         )
@@ -195,7 +193,6 @@ class Wasm3():
         def _read_output(out, queue):
             for data in iter(lambda: out.read(1024), b''):
                 queue.put(data)
-            queue.put(None)
 
         self.q = Queue()
         self.t = Thread(target=_read_output, args=(self.p.stdout, self.q))
@@ -206,31 +203,24 @@ class Wasm3():
         cmd = " ".join(map(str, cmd)) + "\n"
         self._flush_input()
         self._write(cmd)
-        return self._read_until("\nwasm3> ")
+        res = self._read_until("\nwasm3> ")
+        #print("INVOKE", cmd, "=>", res)
+        return res
 
     def _read_until(self, token):
         buff = ""
-        tout = time.time() + self.timeout
-        error = None
-
-        while time.time() < tout:
+        while self._is_running():
             try:
-                data = self.q.get(timeout=0.1)
-                if data == None:
-                    error = "Crashed"
-                    break
-                buff = buff + data.decode("utf-8")
-                idx = buff.rfind(token)
-                if idx >= 0:
-                    return buff[0:idx]
+                data = self.q.get(timeout=0.2).decode("utf-8")
+                buff = buff + data
+                if token in buff:
+                    return buff
             except Empty:
                 pass
-        else:
-            error = "Timeout"
 
         # Crash => restart
-        self.load(self.loaded)
-        raise Exception(error)
+        self.load(self.wasm)
+        raise Exception("Crashed")
 
     def _write(self, data):
         if not self._is_running():
@@ -251,20 +241,6 @@ class Wasm3():
         self.p.wait(timeout=1.0)
         self.p = None
 
-#
-# Blacklist
-#
-
-import fnmatch
-
-class Blacklist():
-    def __init__(self, patterns):
-        patterns = map(fnmatch.translate, patterns)
-        final = '|'.join(patterns)
-        self._regex = re.compile(final)
-
-    def __contains__(self, item):
-        return self._regex.match(item) != None
 
 #
 # Actual test
@@ -277,14 +253,7 @@ specDir = "core/spec/"
 
 wasm3 = Wasm3(args.exec)
 
-blacklist = Blacklist([
-  "float_exprs.wast:* f32.nonarithmetic_nan_bitpattern*",
-  "*.wast:* *.wasm print32*",
-  "*.wast:* *.wasm print64*",
-  "names.wast:*",
-])
-
-stats = dotdict(total_run=0, skipped=0, failed=0, crashed=0, timeout=0,  success=0, missing=0)
+stats = dotdict(total_run=0, skipped=0, failed=0, crashed=0, success=0, missing=0)
 
 # Convert some trap names from the original spec
 trapmap = {
@@ -292,31 +261,23 @@ trapmap = {
 }
 
 def runInvoke(test):
-    test.cmd = [test.action.field]
+    cmd = [test.action.field]
 
     displayArgs = []
     for arg in test.action.args:
-        test.cmd.append(arg['value'])
+        cmd.append(arg['value'])
         displayArgs.append(formatValue(arg['value'], arg['type']))
 
-    test_id = f"{test.source} {test.wasm} {test.cmd[0]}({', '.join(test.cmd[1:])})"
-    if test_id in blacklist:
-        warning(f"Skipping {test_id}")
-        stats.skipped += 1
-        return
-
     if args.verbose:
-        print(f"Running {test_id}")
-
-    stats.total_run += 1
+        print(f"Running {' '.join(cmd)}")
 
     actual = None
     actual_val = None
 
     try:
-        output = wasm3.invoke(test.cmd).strip()
+        output = wasm3.invoke(cmd).strip()
     except Exception as e:
-        output = ""
+        stats.crashed += 1
         actual = f"<{e}>"
 
     # Parse the actual output
@@ -339,10 +300,6 @@ def runInvoke(test):
     if actual == "error no operation ()":
         actual = "<Not Implemented>"
         stats.missing += 1
-    elif actual == "<Crashed>":
-        stats.crashed += 1
-    elif actual == "<Timeout>":
-        stats.timeout += 1
 
     # Prepare the expected result
     expect = None
@@ -380,15 +337,16 @@ def runInvoke(test):
 
     def showTestResult():
         print(" ----------------------")
-        print(f"Test:     {ansi.HEADER}{test.source}{ansi.ENDC} -> {' '.join(test.cmd)}")
+        print(f"Test:     {ansi.HEADER}{test.source}{ansi.ENDC} -> {' '.join(cmd)}")
         print(f"Args:     {', '.join(displayArgs)}")
+        #print(f"RetCode:  {wasm3.returncode}")
         print(f"Expected: {ansi.OKGREEN}{expect}{ansi.ENDC}")
         print(f"Actual:   {ansi.WARNING}{actual}{ansi.ENDC}")
         if args.show_logs and len(output):
             print(f"Log:")
             print(output)
 
-    log.write(f"{test.source}\t|\t{test.wasm} {test.action.field}({', '.join(displayArgs)})\t=>\t\t")
+    log.write(f"{test.source}\t|\t{filename(wasm)} {test.action.field}({', '.join(displayArgs)})\t=>\t\t")
     if actual == expect or (expect == "<Anything>" and actual != "<Crashed>"):
         stats.success += 1
         log.write(f"OK: {actual}\n")
@@ -418,6 +376,7 @@ elif args.all:
     jsonFiles.sort()
 else:
     jsonFiles = list(map(lambda x : f"./core/{x}.json", [
+        #--- Complete ---
         "get_local", "set_local", "tee_local",
         "globals",
 
@@ -446,8 +405,13 @@ else:
         #"start",
         #"if", "loop", "labels", "block", "br", "br_if", "br_table", "return", "unwind",
         #"float_exprs",
+        #"memory_trap",
+        #"memory_grow",
         #"nop", "unreachable",
-        #"memory", "memory_trap", "memory_grow",
+        #"memory",
+        #"func",
+        #"elem",
+        #"switch",
     ]))
 
 for fn in jsonFiles:
@@ -455,7 +419,12 @@ for fn in jsonFiles:
         data = json.load(f)
 
     wast_source = filename(data["source_filename"])
-    wast_module = ""
+
+    if wast_source in ["linking.wast", "exports.wast", "names.wast"]:
+        count = len(data["commands"])
+        stats.skipped += count
+        warning(f"Skipped {wast_source} ({count} tests)")
+        continue
 
     print(f"Running {fn}")
 
@@ -463,14 +432,13 @@ for fn in jsonFiles:
         test = dotdict()
         test.line = int(cmd["line"])
         test.source = wast_source + ":" + str(test.line)
-        test.wasm = wast_module
         test.type = cmd["type"]
 
         if test.type == "module":
-            wast_module = cmd["filename"]
+            module = cmd["filename"]
 
-            fn = os.path.relpath(os.path.join(coreDir, wast_module), curDir)
-            wasm3.load(fn)
+            wasm = os.path.relpath(os.path.join(coreDir, module), curDir)
+            wasm3.load(wasm)
 
         elif (  test.type == "action" or
                 test.type == "assert_return" or
@@ -481,6 +449,9 @@ for fn in jsonFiles:
 
             if args.line and test.line != args.line:
                 continue
+
+            if args.verbose:
+                print(f"Checking {test.source}")
 
             if test.type == "action":
                 test.expected_anything = True
@@ -501,16 +472,12 @@ for fn in jsonFiles:
 
             test.action = dotdict(cmd["action"])
             if test.action.type == "invoke":
-
-                # TODO: invoking in modules not implemented
-                if test.action.module:
-                    stats.skipped += 1
-                    warning(f"Skipped {test.source} (invoke in module)")
-                    continue
-
+                stats.total_run += 1
                 runInvoke(test)
             else:
-                warning(f"Unknown action type '{test.action.type}'")
+                stats.skipped += 1
+                warning(f"Unknown action: {test.action}")
+                continue
 
         elif (  test.type == "register" or
                 test.type == "assert_invalid" or
@@ -519,7 +486,7 @@ for fn in jsonFiles:
                 test.type == "assert_uninstantiable"):
             stats.skipped += 1
         else:
-            fatal(f"Unknown command '{test}'")
+            raise(Exception(f"Unknown command: {test}"))
 
 if (stats.failed + stats.success) != stats.total_run:
     warning("Statistics summary invalid")
