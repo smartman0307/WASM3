@@ -314,16 +314,14 @@ def runInvoke(test):
 
     stats.total_run += 1
 
-    output = ""
     actual = None
     actual_val = None
-    force_fail = False
 
     try:
         output = wasm3.invoke(test.cmd).strip()
     except Exception as e:
+        output = ""
         actual = f"<{e}>"
-        force_fail = True
 
     # Parse the actual output
     if not actual:
@@ -341,18 +339,14 @@ def runInvoke(test):
             actual = "error " + result[-1]
     if not actual:
         actual = "<No Result>"
-        force_fail = True
 
     if actual == "error no operation ()":
         actual = "<Not Implemented>"
         stats.missing += 1
-        force_fail = True
     elif actual == "<Crashed>":
         stats.crashed += 1
-        force_fail = True
     elif actual == "<Timeout>":
         stats.timeout += 1
-        force_fail = True
 
     # Prepare the expected result
     expect = None
@@ -399,7 +393,12 @@ def runInvoke(test):
             print(output)
 
     log.write(f"{test.source}\t|\t{test.wasm} {test.action.field}({', '.join(displayArgs)})\t=>\t\t")
-    if actual != expect or force_fail:
+    if actual == expect or (expect == "<Anything>" and actual != "<Crashed>"):
+        stats.success += 1
+        log.write(f"OK: {actual}\n")
+        if args.line:
+            showTestResult()
+    else:
         stats.failed += 1
         log.write(f"FAIL: {actual}, should be: {expect}\n")
         if args.silent: return
@@ -407,11 +406,6 @@ def runInvoke(test):
 
         showTestResult()
         #sys.exit(1)
-    else:
-        stats.success += 1
-        log.write(f"OK: {actual}\n")
-        if args.line:
-            showTestResult()
 
 if not os.path.isdir(coreDir):
     if not os.path.isdir(specDir):
@@ -425,10 +419,9 @@ if args.file:
     jsonFiles = args.file
 elif args.all:
     jsonFiles = glob.glob(os.path.join(coreDir, "*.json"))
-    jsonFiles = list(map(lambda x: os.path.relpath(x, curDir), jsonFiles))
     jsonFiles.sort()
 else:
-    jsonFiles = list(map(lambda x: f"core/{x}.json", [
+    jsonFiles = list(map(lambda x : f"./core/{x}.json", [
         "get_local", "set_local", "tee_local",
         "globals",
 
@@ -452,6 +445,8 @@ else:
 
         "address", "align", "endianness",
         "memory_redundancy", "float_memory",
+
+		"switch"
 
         #--- TODO ---
         #"start",
