@@ -42,7 +42,7 @@ emsdk activate latest
 export ENGINES_PATH=/opt/wasm_engines
 
 # Wasm3
-../../../build/wasm3 coremark-wasi.wasm
+../../../build/wasm3 coremark-wasi.wasm _start
 
 # WAC
 $ENGINES_PATH/wac/wax coremark-wasi.wasm
