@@ -347,6 +347,18 @@ d_m3ReinterpretOp (_r0, i64, _fp0, f64)
 d_m3ReinterpretOp (_fp0, f32, _r0, i32)
 d_m3ReinterpretOp (_fp0, f64, _r0, i64)
 
+d_m3Op  (Nop)
+{
+    return nextOp ();
+}
+
+
+d_m3Op  (Block)
+{
+    return nextOp ();
+}
+
+
 
 d_m3OpDecl  (Loop)
 d_m3OpDecl  (If_r)
@@ -484,7 +496,19 @@ d_m3Op  (BranchIf)
 }
 
 
-d_m3OpDecl  (BranchTable)
+d_m3Op  (BranchTable)
+{
+    i32 branchIndex = slot (i32);           // branch index is always in a slot
+    
+    u32 numTargets  = immediate (u32);
+
+    pc_t * branches = (pc_t *) _pc;
+
+    if (branchIndex < 0 or branchIndex > numTargets)
+        branchIndex = numTargets; // the default index
+
+    return jumpOp (branches [branchIndex]);
+}
 
 
 d_m3Op  (ContinueLoop)
@@ -542,6 +566,7 @@ d_m3Op  (End)
     m3StackCheck();
     return 0;
 }
+
 
 
 d_m3Op  (GetGlobal)
