@@ -111,7 +111,9 @@ void print_usage() {
     puts("Usage:");
     puts("  wasm3 <file> [args...]");
     puts("  wasm3 --func <function> <file> [args...]");
-    puts("  wasm3 --repl [file]");
+    puts("Repl usage:");
+    puts("  wasm3 --repl [file] [function] [args...]");
+    puts("  wasm3 --repl --func <function> <file> [args...]");
 }
 
 #define ARGV_SHIFT()  { i_argc--; i_argv++; }
@@ -123,7 +125,7 @@ int  main  (int i_argc, const char* i_argv[])
     IM3Runtime env = NULL;
     bool argRepl = false;
     const char* argFile = NULL;
-    const char* argFunc = "_start";
+    const char* argFunc = NULL;
 
 //    m3_PrintM3Info ();
 
@@ -148,14 +150,19 @@ int  main  (int i_argc, const char* i_argv[])
         }
     }
 
-    if ((argRepl and (i_argc > 1)) or   // repl supports 0 or 1 args
-        (not argRepl and (i_argc < 1))  // normal expects at least 1
-    ) {
-        print_usage();
-        return 1;
+    if (argRepl) {
+        ARGV_SET(argFile);
+        if (!argFunc) ARGV_SET(argFunc);
+    } else {
+        if (i_argc < 1) {
+            print_usage();
+            return 1;
+        }
+        ARGV_SET(argFile);
+        if (!argFunc) ARGV_SET(argFunc); //argFunc = "_start"; //TODO: reverted for now
     }
 
-    ARGV_SET(argFile);
+    //printf("=== argFile: %s, argFunc: %s, args: %d\n", argFile, argFunc, i_argc);
 
     result = repl_init(&env);
     if (result) FATAL("repl_init: %s", result);
@@ -170,7 +177,7 @@ int  main  (int i_argc, const char* i_argv[])
         result = m3_LinkLibC (env->modules);
         if (result) FATAL("m3_LinkLibC: %s", result);
 
-        if (argFunc and not argRepl) {
+        if (argFunc) {
             result = repl_call(env, argFunc, i_argc, i_argv);
             if (result) FATAL("repl_call: %s", result);
         }
