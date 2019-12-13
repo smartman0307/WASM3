@@ -170,23 +170,7 @@ from queue import Queue, Empty
 
 class Wasm3():
     def __init__(self, executable):
-        if executable.endswith(".wasm"):
-            (engine, wasm) = executable.split(maxsplit=1)
-
-            if engine == "wasirun":
-                self.exe = [engine, wasm]
-            elif engine == "wasmer":
-                self.exe = [engine, "run", "--dir=.", wasm, "--"]
-            #elif engine == "wasmer-js":
-            #    self.exe = [engine, "run", wasm]
-            elif engine == "wasmtime":
-                self.exe = [engine, "--dir=.", wasm, "--"]
-            elif engine == "iwasm":
-                self.exe = [engine, "--dir=.", wasm]
-            else:
-                fatal(f"Don't know how to run engine {engine}")
-        else:
-            self.exe = [executable]
+        self.exe = executable
         self.p = None
         self.timeout = 3.0
 
@@ -196,7 +180,7 @@ class Wasm3():
 
         self.loaded = fn
         self.p = Popen(
-            self.exe + ["--repl", fn],
+            [self.exe, "--repl", fn],
             shell = False,
             bufsize=0, stdin=PIPE, stdout=PIPE, stderr=STDOUT
         )
