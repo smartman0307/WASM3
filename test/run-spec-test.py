@@ -171,18 +171,18 @@ from queue import Queue, Empty
 class Wasm3():
     def __init__(self, executable):
         if executable.endswith(".wasm"):
-            (engine, wasm) = executable.split(maxsplit=1)
+            (engine, executable) = executable.split(maxsplit=1)
 
-            if engine == "wasirun":
-                self.exe = [engine, wasm]
-            elif engine == "wasmer":
-                self.exe = [engine, "run", "--dir=.", wasm, "--"]
+            if engine == "wasmer":
+                self.exe = [engine, "run", "--dir=.", executable, "--"]
             #elif engine == "wasmer-js":
-            #    self.exe = [engine, "run", wasm]
+            #    self.exe = [engine, "run", executable]
+            elif engine == "wasirun":
+                self.exe = [engine, executable]
             elif engine == "wasmtime":
-                self.exe = [engine, "--dir=.", wasm, "--"]
+                self.exe = [engine, "--dir=.", "--optimize", executable, "--"]
             elif engine == "iwasm":
-                self.exe = [engine, "--dir=.", wasm]
+                self.exe = [engine, "--dir=.", executable]
             else:
                 fatal(f"Don't know how to run engine {engine}")
         else:
@@ -518,8 +518,6 @@ for fn in jsonFiles:
                 test.expected[0]["value"] = "<Arithmetic NaN>"
             elif test.type == "assert_trap":
                 test.expected_trap = cmd["text"]
-            elif test.type == "assert_exhaustion" and args.all: # TODO: Remove args.all check
-                test.expected_trap = "stack overflow"
             else:
                 stats.skipped += 1
                 warning(f"Skipped {test.source} ({test.type} not implemented)")
