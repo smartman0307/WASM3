@@ -102,7 +102,7 @@ i16  GetNumBlockValues  (IM3Compilation o)
 
 bool  IsStackTopInRegister  (IM3Compilation o)
 {
-    i16 i = GetStackTopIndex (o);               //d_m3Assert (i >= 0);
+    i16 i = GetStackTopIndex (o);               d_m3Assert (i >= 0 or IsStackPolymorphic (o));
 
     if (i >= 0)
     {
@@ -122,7 +122,7 @@ static const u16 c_slotUnused = 0xffff;
 
 u16  GetStackTopSlotIndex  (IM3Compilation o)
 {
-    i16 i = GetStackTopIndex (o);               //d_m3Assert (i >= 0);
+    i16 i = GetStackTopIndex (o);               d_m3Assert (i >= 0 or IsStackPolymorphic (o));
 
     u16 slot = c_slotUnused;
     
@@ -203,7 +203,7 @@ bool  IsRegisterTypeAllocated  (IM3Compilation o, u8 i_type)
 
 void  AllocateRegister  (IM3Compilation o, u32 i_register, u16 i_stackIndex)
 {
-    //d_m3Assert (not IsRegisterAllocated (o, i_register));
+    d_m3Assert (not IsRegisterAllocated (o, i_register));
 
     o->regStackIndexPlusOne [i_register] = i_stackIndex + 1;
 }
@@ -211,7 +211,7 @@ void  AllocateRegister  (IM3Compilation o, u32 i_register, u16 i_stackIndex)
 
 void  DeallocateRegister  (IM3Compilation o, u32 i_register)
 {
-    //d_m3Assert (IsRegisterAllocated (o, i_register));
+    d_m3Assert (IsRegisterAllocated (o, i_register));
 
     o->regStackIndexPlusOne [i_register] = c_m3RegisterUnallocated;
 }
@@ -345,7 +345,7 @@ M3Result  Push  (IM3Compilation o, u8 i_m3Type, i16 i_location)
 
 M3Result  PushRegister  (IM3Compilation o, u8 i_m3Type)
 {
-    i16 location = IsFpType (i_m3Type) ? c_m3Fp0SlotAlias : c_m3Reg0SlotAlias;              //d_m3Assert (i_m3Type);
+    i16 location = IsFpType (i_m3Type) ? c_m3Fp0SlotAlias : c_m3Reg0SlotAlias;            d_m3Assert (i_m3Type or IsStackPolymorphic (o));
     return Push (o, i_m3Type, location);
 }
 
@@ -461,7 +461,7 @@ _           (Push (o, i_m3Type, location));
         else
         {
 _           (EmitOp (o, op_Const));
-            EmitConstant64 (o, i_word);
+            EmitConstant (o, i_word);
 _           (PushAllocatedSlotAndEmit (o, i_m3Type));
         }
     }
@@ -782,6 +782,8 @@ _             (ReturnStackTop (o));
 		
 _       (EmitOp (o, op_Return));
 		
+_       (UnwindBlockStack (o));
+        
         // B: move register to return slot for branchehs
         if (valueType)
         {
@@ -978,7 +980,7 @@ _               (MoveStackTopToRegister (o));
         {
             op = op_Branch;
 
-            if (valueType != c_m3Type_none)
+            if (valueType != c_m3Type_none and not IsStackPolymorphic (o))
 _               (MoveStackTopToRegister (o));
 
 //_           (UnwindBlockStack (o));
@@ -1658,7 +1660,7 @@ const M3OpInfo c_operations [] =
     M3OP( "i32.and",            -1, i_32,   d_commutativeBinOpList (u64, And)       ),          // 0x71
     M3OP( "i32.or",             -1, i_32,   d_commutativeBinOpList (u64, Or)        ),          // 0x72
     M3OP( "i32.xor",            -1, i_32,   d_commutativeBinOpList (u64, Xor)       ),          // 0x73
-    M3OP( "i32.shl",            -1, i_32,   d_binOpList (u32, ShiftLeft)            ),          // 0x74
+    M3OP( "i32.shl",            -1, i_32,   d_binOpList (i32, ShiftLeft)            ),          // 0x74
     M3OP( "i32.shr_s",          -1, i_32,   d_binOpList (i32, ShiftRight)           ),          // 0x75
     M3OP( "i32.shr_u",          -1, i_32,   d_binOpList (u32, ShiftRight)           ),          // 0x76
     M3OP( "i32.rotl",           -1, i_32,   d_binOpList (u32, Rotl)                 ),          // 0x77
@@ -1678,7 +1680,7 @@ const M3OpInfo c_operations [] =
     M3OP( "i64.and",            -1, i_64,   d_commutativeBinOpList (u64, And)       ),          // 0x83
     M3OP( "i64.or",             -1, i_64,   d_commutativeBinOpList (u64, Or)        ),          // 0x84
     M3OP( "i64.xor",            -1, i_64,   d_commutativeBinOpList (u64, Xor)       ),          // 0x85
-    M3OP( "i64.shl",            -1, i_64,   d_binOpList (u64, ShiftLeft)            ),          // 0x86
+    M3OP( "i64.shl",            -1, i_64,   d_binOpList (i64, ShiftLeft)            ),          // 0x86
     M3OP( "i64.shr_s",          -1, i_64,   d_binOpList (i64, ShiftRight)           ),          // 0x87
     M3OP( "i64.shr_u",          -1, i_64,   d_binOpList (u64, ShiftRight)           ),          // 0x88
     M3OP( "i64.rotl",           -1, i_64,   d_binOpList (u64, Rotl)                 ),          // 0x89
