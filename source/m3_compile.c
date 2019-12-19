@@ -1154,7 +1154,10 @@ _           (EmitOp     (o, op));
             
             EmitMemory  (o);
         }
-        else result = ErrorCompile (c_m3Err_functionImportMissing, o, "'%s'", GetFunctionName (function));
+        else
+		{
+			result = ErrorCompile (c_m3Err_functionImportMissing, o, "'%s.%s'", GetFunctionImportModuleName (function), GetFunctionName (function));
+		}
     }
     else result = c_m3Err_functionLookupFailed;
 
@@ -1391,9 +1394,8 @@ M3Result  Compile_Unreachable  (IM3Compilation o, u8 i_opcode)
 
 _   (AddTrapRecord (o));
     
-    o->block.isPolymorphic = true;
-
 _   (EmitOp (o, op_Unreachable));
+    o->block.isPolymorphic = true;
 
     _catch:
     return result;
@@ -1472,7 +1474,11 @@ _           (PushRegister (o, op->type));
     }
     else
     {
-        result = ErrorCompile ("no operation found for opcode", o, "'%s'", op->name);
+#		if DEBUG
+        	result = ErrorCompile ("no operation found for opcode", o, "'%s'", op->name);
+# 		else
+			result = ErrorCompile ("no operation found for opcode", o, "");
+# 		endif
     }
 
     _catch: return result;
@@ -1660,7 +1666,7 @@ const M3OpInfo c_operations [] =
     M3OP( "i32.and",            -1, i_32,   d_commutativeBinOpList (u64, And)       ),          // 0x71
     M3OP( "i32.or",             -1, i_32,   d_commutativeBinOpList (u64, Or)        ),          // 0x72
     M3OP( "i32.xor",            -1, i_32,   d_commutativeBinOpList (u64, Xor)       ),          // 0x73
-    M3OP( "i32.shl",            -1, i_32,   d_binOpList (i32, ShiftLeft)            ),          // 0x74
+    M3OP( "i32.shl",            -1, i_32,   d_binOpList (u32, ShiftLeft)            ),          // 0x74
     M3OP( "i32.shr_s",          -1, i_32,   d_binOpList (i32, ShiftRight)           ),          // 0x75
     M3OP( "i32.shr_u",          -1, i_32,   d_binOpList (u32, ShiftRight)           ),          // 0x76
     M3OP( "i32.rotl",           -1, i_32,   d_binOpList (u32, Rotl)                 ),          // 0x77
@@ -1680,7 +1686,7 @@ const M3OpInfo c_operations [] =
     M3OP( "i64.and",            -1, i_64,   d_commutativeBinOpList (u64, And)       ),          // 0x83
     M3OP( "i64.or",             -1, i_64,   d_commutativeBinOpList (u64, Or)        ),          // 0x84
     M3OP( "i64.xor",            -1, i_64,   d_commutativeBinOpList (u64, Xor)       ),          // 0x85
-    M3OP( "i64.shl",            -1, i_64,   d_binOpList (i64, ShiftLeft)            ),          // 0x86
+    M3OP( "i64.shl",            -1, i_64,   d_binOpList (u64, ShiftLeft)            ),          // 0x86
     M3OP( "i64.shr_s",          -1, i_64,   d_binOpList (i64, ShiftRight)           ),          // 0x87
     M3OP( "i64.shr_u",          -1, i_64,   d_binOpList (u64, ShiftRight)           ),          // 0x88
     M3OP( "i64.rotl",           -1, i_64,   d_binOpList (u64, Rotl)                 ),          // 0x89
