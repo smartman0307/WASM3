@@ -142,10 +142,11 @@ d_m3CommutativeOp_i (i32, Multiply,         *)      d_m3CommutativeOp_i (i64, Mu
 
 d_m3Op_i (i32, Subtract,                    -)      d_m3Op_i (i64, Subtract,                    -)
 
-#define OP_SHL_32(X,N) ((X) << ((u32)(N) % 32))
-#define OP_SHL_64(X,N) ((X) << ((u64)(N) % 64))
-#define OP_SHR_32(X,N) ((X) >> ((u32)(N) % 32))
-#define OP_SHR_64(X,N) ((X) >> ((u64)(N) % 64))
+// Note: For some reason modulo is needed for Clang
+#define OP_SHL_32(X,N) ((X) << ((N) % 32))
+#define OP_SHL_64(X,N) ((X) << ((N) % 64))
+#define OP_SHR_32(X,N) ((X) >> ((N) % 32))
+#define OP_SHR_64(X,N) ((X) >> ((N) % 64))
 
 d_m3OpFunc_i (u32, ShiftLeft,       OP_SHL_32)      d_m3OpFunc_i (u64, ShiftLeft,       OP_SHL_64)
 d_m3OpFunc_i (i32, ShiftRight,      OP_SHR_32)      d_m3OpFunc_i (i64, ShiftRight,      OP_SHR_64)
@@ -483,7 +484,7 @@ d_m3Select_f (f64, _fp0, s, slot (i32))
 d_m3Op  (Return)
 {
     m3StackCheck();
-    return 0;
+    return NULL;
 }
 
 
@@ -554,8 +555,9 @@ d_m3OpDecl  (BranchTable)
 d_m3Op  (ContinueLoop)
 {
     // TODO: this is where execution can "escape" the M3 code and callback to the client / fiber switch
-    // OR it can go in the Loop operation
-
+    // OR it can go in the Loop operation. I think it's best to do here. adding code to the loop operation
+    // has the potential to increase its native-stack usage. (don't forget ContinueLoopIf too.)
+    
     void * loopId = immediate (void *);
     return loopId;
 }
@@ -640,7 +642,7 @@ d_m3Op  (SetGlobal_f64)
 }
 
 
-
+d_m3OpDecl (CopySlot_32)
 d_m3OpDecl (CopySlot_64)
 
 
@@ -699,9 +701,6 @@ d_m3SetRegisterSetSlot (f64, _fp0)
 
 #endif
 
-// memcpy here is to support non-aligned access on some platforms.
-// TODO: check if this is optimized-out on x86/x64, and performance impact
-
 #define d_m3Load(REG,DEST_TYPE,SRC_TYPE)                \
 d_m3Op(DEST_TYPE##_Load_##SRC_TYPE##_r)                 \
 {                                                       \
@@ -713,9 +712,7 @@ d_m3Op(DEST_TYPE##_Load_##SRC_TYPE##_r)                 \
                                                         \
     if (src8 + sizeof (SRC_TYPE) <= end)                \
     {                                                   \
-        SRC_TYPE value;                                 \
-        memcpy(&value, src8, sizeof(value));            \
-        REG = (DEST_TYPE)value;                         \
+        REG = (DEST_TYPE) (* (SRC_TYPE *) src8);        \
         return nextOp ();                               \
     }                                                   \
     else d_outOfBounds;                                 \
@@ -730,9 +727,7 @@ d_m3Op(DEST_TYPE##_Load_##SRC_TYPE##_s)                 \
                                                         \
     if (src8 + sizeof (SRC_TYPE) <= end)                \
     {                                                   \
-        SRC_TYPE value;                                 \
-        memcpy(&value, src8, sizeof(value));            \
-        REG = (DEST_TYPE)value;                         \
+        REG = (DEST_TYPE) (* (SRC_TYPE *) src8);        \
         return nextOp ();                               \
     }                                                   \
     else d_outOfBounds;                                 \
