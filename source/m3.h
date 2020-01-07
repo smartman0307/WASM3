@@ -157,8 +157,7 @@ d_m3ErrorConst  (trapStackOverflow,             "[trap] stack overflow")
 //  initialization
 //-------------------------------------------------------------------------------------------------------------------------------
 
-    // not yet implemented
-//  M3StackInfo         m3_GetNativeStackInfo       (int32_t                i_stackSize);
+    M3StackInfo         m3_GetNativeStackInfo       (int32_t                i_stackSize);
     // GetNativeStackInfo should be called at the start of main() or, if runtimes are used in a thread,
     // at the start of the thread start function.
 
