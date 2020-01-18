@@ -618,9 +618,10 @@ m3ApiRawFunction(m3_wasi_unstable_proc_exit)
     m3ApiReturnType  (uint32_t)
     m3ApiGetArg      (uint32_t, code)
 
-    if (runtime == NULL) { m3ApiReturn(__WASI_EINVAL); }
-
-    runtime->exit_code = code;
+    // TODO: in repl mode, trap and bail out
+    if (code) {
+        fprintf(stderr, M3_ARCH "-wasi: exit(%d)\n", code);
+    }
 
     m3ApiTrap(m3Err_trapExit);
 }
