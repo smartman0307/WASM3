@@ -70,7 +70,7 @@ d_m3OpDef  (CallIndirect)
         {
             // TODO: this can eventually be simplified. by using a shared set of unique M3FuncType objects in
             // M3Environment, the compare can be reduced to a single pointer-compare operation
-
+#if !defined(d_m3SkipCallCheck)
             if (type->numArgs != function->funcType->numArgs)
             {
                 return m3Err_trapIndirectCallTypeMismatch;
@@ -88,7 +88,7 @@ d_m3OpDef  (CallIndirect)
                     return m3Err_trapIndirectCallTypeMismatch;
                 }
             }
-
+#endif
             if (not function->compiled)
                 r = Compile_Function (function);
 
@@ -237,10 +237,19 @@ d_m3OpDef  (GetGlobal)
 }
 
 
-d_m3OpDef  (SetGlobal_i)
+d_m3OpDef  (SetGlobal_i32)
 {
-    i64 * global = immediate (i64 *);
-    * global = _r0;                         //  printf ("set global: %p %" PRIi64 "\n", global, _r0);
+    u32 * global = immediate (u32 *);
+    * global = (u32) _r0;                         //  printf ("set global: %p %" PRIi64 "\n", global, _r0);
+
+    return nextOp ();
+}
+
+
+d_m3OpDef  (SetGlobal_i64)
+{
+    u64 * global = immediate (u64 *);
+    * global = (u64) _r0;                         //  printf ("set global: %p %" PRIi64 "\n", global, _r0);
 
     return nextOp ();
 }
