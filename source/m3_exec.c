@@ -70,7 +70,7 @@ d_m3OpDef  (CallIndirect)
         {
             // TODO: this can eventually be simplified. by using a shared set of unique M3FuncType objects in
             // M3Environment, the compare can be reduced to a single pointer-compare operation
-#if !defined(d_m3SkipCallCheck)
+
             if (type->numArgs != function->funcType->numArgs)
             {
                 return m3Err_trapIndirectCallTypeMismatch;
@@ -88,7 +88,7 @@ d_m3OpDef  (CallIndirect)
                     return m3Err_trapIndirectCallTypeMismatch;
                 }
             }
-#endif
+
             if (not function->compiled)
                 r = Compile_Function (function);
 
@@ -346,6 +346,19 @@ d_m3OpDef (CopySlot_32)
 }
 
 
+d_m3OpDef (PreserveCopySlot_32)
+{
+    u32 * dest      = slot_ptr (u32);
+    u32 * src       = slot_ptr (u32);
+    u32 * preserve  = slot_ptr (u32);
+    
+    * preserve = * dest;
+    * dest = * src;
+    
+    return nextOp ();
+}
+
+
 d_m3OpDef (CopySlot_64)
 {
     u64 * dst = slot_ptr (u64);
@@ -356,6 +369,18 @@ d_m3OpDef (CopySlot_64)
     return nextOp ();
 }
 
+
+d_m3OpDef (PreserveCopySlot_64)
+{
+    u64 * dest      = slot_ptr (u64);
+    u64 * src       = slot_ptr (u64);
+    u64 * preserve  = slot_ptr (u64);
+    
+    * preserve = * dest;
+    * dest = * src;
+    
+    return nextOp ();
+}
 
 
 #if d_m3RuntimeStackDumps
