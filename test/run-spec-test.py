@@ -439,8 +439,7 @@ def runInvoke(test):
 if args.file:
     jsonFiles = args.file
 else:
-    jsonFiles = (glob.glob(os.path.join(".", "core", "*.json")) +
-                 glob.glob(os.path.join(".", "proposals", "sign-extension-ops", "*.json")))
+    jsonFiles = glob.glob(os.path.join(".", "core", "*.json"))
 
 jsonFiles = list(map(lambda x: os.path.relpath(x, scriptDir), jsonFiles))
 jsonFiles.sort()
