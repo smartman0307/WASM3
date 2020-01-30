@@ -71,7 +71,9 @@ d_m3RetSig  profileOp  (d_m3OpSig, cstr_t i_operationName);
 
 d_m3RetSig  Call  (d_m3OpSig)
 {
-    m3Yield ();
+    m3ret_t possible_trap = m3_Yield ();
+    if (UNLIKELY(possible_trap)) return possible_trap;
+
     return nextOpDirect();
 }
 
@@ -164,6 +166,10 @@ d_m3Op_i (i32, Subtract,                    -)      d_m3Op_i (i64, Subtract,    
 d_m3OpFunc_i (u32, ShiftLeft,       OP_SHL_32)      d_m3OpFunc_i (u64, ShiftLeft,       OP_SHL_64)
 d_m3OpFunc_i (i32, ShiftRight,      OP_SHR_32)      d_m3OpFunc_i (i64, ShiftRight,      OP_SHR_64)
 d_m3OpFunc_i (u32, ShiftRight,      OP_SHR_32)      d_m3OpFunc_i (u64, ShiftRight,      OP_SHR_64)
+
+d_m3CommutativeOp_i (u32, And,              &)
+d_m3CommutativeOp_i (u32, Or,               |)
+d_m3CommutativeOp_i (u32, Xor,              ^)
 
 d_m3CommutativeOp_i (u64, And,              &)
 d_m3CommutativeOp_i (u64, Or,               |)
