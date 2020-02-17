@@ -48,7 +48,7 @@ u32 GetTypeNumSlots (u8 i_type)
 }
 
 i16  GetStackTopIndex  (IM3Compilation o)
-{
+{                                                           d_m3Assert (o->stackIndex > 0);
     return o->stackIndex - 1;
 }
 
@@ -100,13 +100,19 @@ i16  GetNumBlockValues  (IM3Compilation o)
 }
 
 
+bool IsStackIndexInRegister  (IM3Compilation o, u16 i_stackIndex)
+{                                                                           d_m3Assert (i_stackIndex < o->stackIndex);
+    return (o->wasmStack [i_stackIndex] >= d_m3Reg0SlotAlias);
+}
+
+
 bool  IsStackTopInRegister  (IM3Compilation o)
 {
-    i16 i = GetStackTopIndex (o);               d_m3Assert (i >= 0 or IsStackPolymorphic (o));
+    i16 i = GetStackTopIndex (o);                                           d_m3Assert (i >= 0 or IsStackPolymorphic (o));
 
     if (i >= 0)
     {
-        return (o->wasmStack [i] >= d_m3Reg0SlotAlias);
+        return IsStackIndexInRegister (o, (u16) i);
     }
     else return false;
 }
@@ -143,21 +149,9 @@ bool  IsStackTopMinus1InRegister  (IM3Compilation o)
 {
     i16 i = GetStackTopIndex (o);
 
-    if (i > 0)
+    if (i >= 1)
     {
         return (o->wasmStack [i - 1] >= d_m3Reg0SlotAlias);
-    }
-    else return false;
-}
-
-
-bool  IsStackTopMinus2InRegister  (IM3Compilation o)
-{
-    i16 i = GetStackTopIndex (o);
-
-    if (i > 1)
-    {
-        return (o->wasmStack [i - 2] >= d_m3Reg0SlotAlias);
     }
     else return false;
 }
@@ -582,15 +576,16 @@ bool  PatchBranches  (IM3Compilation o)
 //-------------------------------------------------------------------------------------------------------------------------
 
 
-M3Result CopyTopSlot (IM3Compilation o, u16 i_destSlot)
+M3Result CopyStackSlot (IM3Compilation o, u16 i_stackIndex, u16 i_destSlot)
 {
     M3Result result = m3Err_none;
 
     IM3Operation op;
 
-    u8 type = GetStackTopType (o);
+    u8 type = GetStackBottomType (o, i_stackIndex);
+    bool inRegister = IsStackIndexInRegister (o, i_stackIndex);
 
-    if (IsStackTopInRegister (o))
+    if (inRegister)
     {
         op = c_setSetOps [type];
     }
@@ -599,9 +594,20 @@ M3Result CopyTopSlot (IM3Compilation o, u16 i_destSlot)
 _   (EmitOp (o, op));
     EmitSlotOffset (o, i_destSlot);
 
-    if (IsStackTopInSlot (o))
-        EmitSlotOffset (o, GetStackTopSlotIndex (o));
+    if (not inRegister)
+        EmitSlotOffset (o, o->wasmStack [i_stackIndex]);
 
+    _catch: return result;
+}
+
+
+M3Result CopyTopSlot (IM3Compilation o, u16 i_destSlot)
+{
+    M3Result result;
+
+    i16 stackTop = GetStackTopIndex (o);
+_   (CopyStackSlot (o, (u16) stackTop, i_destSlot));
+    
     _catch: return result;
 }
 
@@ -1428,13 +1434,6 @@ M3Result  Compile_Select  (IM3Compilation o, u8 i_opcode)
 
     if (IsFpType (type))
     {
-        // not consuming a fp reg, so preserve
-        if (!IsStackTopMinus1InRegister(o) &&
-            !IsStackTopMinus2InRegister(o))
-        {
-            (PreserveRegisterIfOccupied (o, type));
-        }
-
         bool selectorInReg = IsStackTopInRegister (o);
         slots [0] = GetStackTopSlotIndex (o);
 _       (Pop (o));
@@ -1451,18 +1450,14 @@ _       (Pop (o));
 _          (Pop (o));
         }
 
+        // not consuming a fp reg, so preserve
+        if (opIndex == 0)
+_          (PreserveRegisterIfOccupied (o, type));
+
         op = fpSelectOps [type - c_m3Type_f32] [selectorInReg] [opIndex];
     }
     else if (IsIntType (type))
     {
-        // 'sss' operation doesn't consume a register, so might have to protected its contents
-        if (!IsStackTopInRegister(o) &&
-            !IsStackTopMinus1InRegister(o) &&
-            !IsStackTopMinus2InRegister(o)) 
-        {
-            (PreserveRegisterIfOccupied (o, type));
-        }
-
         u32 opIndex = 3;  // op_Select_*_sss
 
         for (u32 i = 0; i < 3; ++i)
@@ -1474,6 +1469,10 @@ _          (Pop (o));
 
 _          (Pop (o));
         }
+
+        // 'sss' operation doesn't consume a register, so might have to protected its contents
+        if (opIndex == 3)
+_          (PreserveRegisterIfOccupied (o, type));
 
         op = intSelectOps [type - c_m3Type_i32] [opIndex];
     }
