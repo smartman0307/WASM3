@@ -34,35 +34,6 @@ bool  AreFuncTypesEqual  (const IM3FuncType i_typeA, const IM3FuncType i_typeB)
     return false;
 }
 
-# if (d_m3EnableCodePageRefCounting)
-
-void Runtime_ReleaseCodePages (IM3Runtime i_runtime)
-{
-    
-}
-
-
-void  Function_FreeCompiledCode (IM3Function i_function)
-{
-    i_function->compiled = NULL;
-    
-    while (i_function->numCodePages--)
-    {
-        IM3CodePage page = i_function->pages [i_function->numCodePages];
-        
-        if (-- (page->info.usageCount) == 0)
-        {
-            printf ("free %p\n", page);
-        }
-    }
-    
-    m3Free (i_function->pages);
-    
-    Runtime_ReleaseCodePages (i_function->module->runtime);
-}
-
-# endif
-
 
 cstr_t  GetFunctionName  (IM3Function i_function)
 {
@@ -252,7 +223,7 @@ void  FreeCompilationPatches  (IM3Compilation o)
 }
 
 
-void  Runtime_Release  (IM3Runtime i_runtime)
+void  ReleaseRuntime  (IM3Runtime i_runtime)
 {
     ForEachModule (i_runtime, _FreeModule, NULL);
 
@@ -262,6 +233,7 @@ void  Runtime_Release  (IM3Runtime i_runtime)
     FreeCompilationPatches (& i_runtime->compilation);
 
     m3Free (i_runtime->stack);
+
     m3Free (i_runtime->memory.mallocated);
 }
 
@@ -272,7 +244,7 @@ void  m3_FreeRuntime  (IM3Runtime i_runtime)
     {
         m3_PrintProfilerInfo ();
         
-        Runtime_Release (i_runtime);
+        ReleaseRuntime (i_runtime);
         m3Free (i_runtime);
     }
 }
@@ -335,7 +307,7 @@ M3Result  EvaluateExpression  (IM3Module i_module, void * o_expressed, u8 i_type
     else result = m3Err_mallocFailedCodePage;
 
     runtime.stack = NULL;        // prevent free(stack) in ReleaseRuntime
-    Runtime_Release (& runtime);
+    ReleaseRuntime (& runtime);
     i_module->runtime = savedRuntime;
 
     * io_bytes = o->wasm;
@@ -471,9 +443,9 @@ _       (EvaluateExpression (io_module, & segmentOffset, c_m3Type_i32, & start, 
 
         if (io_memory->mallocated)
         {
-            u8 * dest = m3MemData (io_memory->mallocated) + segmentOffset;
+            u8 * dest = m3MemData(io_memory->mallocated) + segmentOffset;
 
-            if ((size_t) segmentOffset + segment->size <= io_memory->mallocated->length)
+            if ((size_t)segmentOffset + segment->size <= io_memory->mallocated->length)
                 memcpy (dest, segment->data, segment->size);
             else
                 _throw ("data segment overflowing linear memory");
@@ -838,7 +810,6 @@ IM3CodePage  AcquireCodePage  (IM3Runtime i_runtime)
 }
 
 
-# if defined (DEBUG)
 u32  CountPages  (IM3CodePage i_page)
 {
     u32 numPages = 0;
@@ -851,7 +822,6 @@ u32  CountPages  (IM3CodePage i_page)
 
     return numPages;
 }
-# endif
 
 
 void  ReleaseCodePage  (IM3Runtime i_runtime, IM3CodePage i_codePage)
