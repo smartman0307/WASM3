@@ -152,7 +152,7 @@ M3Result  m3_Realloc  (void ** io_ptr, size_t i_newSize, size_t i_oldSize)
 }
 
 
-M3Result  m3_CopyMem  (void ** o_to, cbytes_t i_from, size_t i_size)
+M3Result  m3_CopyMem  (void ** o_to, const void * i_from, size_t i_size)
 {
     void * to = malloc (i_size);
     
@@ -353,7 +353,7 @@ M3Result  ReadLebUnsigned  (u64 * o_value, u32 i_maxNumBits, bytes_t * io_bytes,
             break;
         }
 
-        if (shift >= i_maxNumBits)
+        if (shift > i_maxNumBits)
         {
             result = m3Err_lebOverflow;
             break;
@@ -389,14 +389,15 @@ M3Result  ReadLebSigned  (i64 * o_value, u32 i_maxNumBits, bytes_t * io_bytes, c
 
             if ((byte & 0x40) and (shift < 64))    // do sign extension
             {
-                u64 extend = 0;
-                value |= (~extend << shift);
+                u64 extend = 1;
+                extend <<= shift;
+                value |= -extend;
             }
 
             break;
         }
 
-        if (shift >= i_maxNumBits)
+        if (shift > i_maxNumBits)
         {
             result = m3Err_lebOverflow;
             break;
