@@ -23,7 +23,7 @@ IM3CodePage  NewCodePage  (u32 i_minNumLines)
         page->info.sequence = ++s_sequence;
         page->info.numLines = (pageSize - sizeof (M3CodePageHeader)) / sizeof (code_t);
 
-        m3log (emit, "new page: %p; seq: %d; bytes: %d; lines: %d", GetPagePC (page), page->info.sequence, pageSize, page->info.numLines);
+        m3log (runtime, "new page: %p; seq: %d; bytes: %d; lines: %d", GetPagePC (page), page->info.sequence, pageSize, page->info.numLines);
     }
 
     return page;
@@ -34,7 +34,7 @@ void  FreeCodePages  (IM3CodePage i_page)
 {
     while (i_page)
     {
-        m3log (code, "free page: %d  util: %3.1f%%", i_page->info.sequence, 100. * i_page->info.lineIndex / i_page->info.numLines);
+        m3log (code, "free page: %d; %p; util: %3.1f%%", i_page->info.sequence, i_page, 100. * i_page->info.lineIndex / i_page->info.numLines);
 
         IM3CodePage next = i_page->info.next;
         m3Free (i_page);
@@ -93,4 +93,18 @@ IM3CodePage  PopCodePage  (IM3CodePage * i_list)
     page->info.next = NULL;
 
     return page;
+}
+
+
+u32  CountCodePages  (IM3CodePage i_list)
+{
+    u32 numPages = 0;
+    
+    while (i_list)
+    {
+        ++numPages;
+        i_list = i_list->info.next;
+    }
+    
+    return numPages;
 }
