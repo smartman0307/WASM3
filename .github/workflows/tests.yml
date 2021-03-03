@@ -111,10 +111,6 @@ jobs:
         - {target: clang-x86-no-uvwasi,   platform: "-A Win32",   toolset: "-T ClangCL",  flags: "-DBUILD_WASI=simple"   }
         - {target: msvc-x86-no-uvwasi,    platform: "-A Win32",   toolset: "",            flags: "-DBUILD_WASI=simple"   }
 
-    defaults:
-      run:
-        shell: cmd
-
     steps:
     - uses: actions/checkout@v2
     - name: Configure
@@ -252,11 +248,10 @@ jobs:
       run: |
         cd test
         python3 run-spec-test.py --exec "wine ./wasm3-win.com --repl"
-    # TODO:
-    #- name: Test WASI apps (in Wine)
-    #  run: |
-    #    cd test
-    #    python3 run-wasi-test.py --fast --exec "wine ./wasm3-win.com"
+    - name: Test WASI apps (in Wine)
+      run: |
+        cd test
+        python3 run-wasi-test.py --fast --exec "wine ./wasm3-win.com"
 
   build-cross-qemu:
     runs-on: ubuntu-latest
