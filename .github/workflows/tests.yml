@@ -111,6 +111,10 @@ jobs:
         - {target: clang-x86-no-uvwasi,   platform: "-A Win32",   toolset: "-T ClangCL",  flags: "-DBUILD_WASI=simple"   }
         - {target: msvc-x86-no-uvwasi,    platform: "-A Win32",   toolset: "",            flags: "-DBUILD_WASI=simple"   }
 
+    defaults:
+      run:
+        shell: cmd
+
     steps:
     - uses: actions/checkout@v2
     - name: Configure
@@ -302,7 +306,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        ${{ matrix.config.cc }} -DASSERTS -Dd_m3HasWASI \
+        ${{ matrix.config.cc }} -DASSERTS -Dd_m3HasWASI ${{ matrix.config.cflags }} \
             -I../source ../source/*.c ../platforms/app/main.c \
             -O3 -g0 -flto -lm -static \
             -o wasm3
