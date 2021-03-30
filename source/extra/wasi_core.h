@@ -31,9 +31,7 @@
 
 #ifdef __cplusplus
 // Hacks alert
-#undef _Static_assert
 #define _Static_assert(...)
-#undef _Noreturn
 #define _Noreturn
 #endif
 
