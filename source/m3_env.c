@@ -53,14 +53,14 @@ void  Function_Release  (IM3Function i_function)
 
     FreeImportInfo (& i_function->import);
 
-    //if (i_function->ownsWasmCode)
-    //    m3Free (i_function->wasm);
+    if (i_function->ownsWasmCode)
+        m3_Free (i_function->wasm);
 
     // Function_FreeCompiledCode (func);
 
 #   if (d_m3EnableCodePageRefCounting)
     {
-        m3Free (i_function->codePageRefs);
+        m3_Free (i_function->codePageRefs);
         i_function->numCodePageRefs = 0;
     }
 #   endif
@@ -83,7 +83,7 @@ void  Function_FreeCompiledCode (IM3Function i_function)
             }
         }
 
-        m3Free (i_function->codePageRefs);
+        m3_Free (i_function->codePageRefs);
 
         Runtime_ReleaseCodePages (i_function->module->runtime);
     }
