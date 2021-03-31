@@ -7,11 +7,10 @@
 
 #include <stdio.h>
 
-#include "wasm3_ext.h"
+//#include "m3_ext.h"
 #include "m3_bind.h"
 
-#define Test(NAME) printf ("\n    test: %s\n", #NAME); if (true)
-#define DisabledTest(NAME) printf ("\ndisabled: %s\n", #NAME); if (false)
+#define Test(NAME) printf ("\n  test: %s\n", #NAME);
 #define expect(TEST) if (not (TEST)) { printf ("failed: (%s) on line: %d\n", #TEST, __LINE__); }
 
 int  main  (int i_argc, const char  * i_argv [])
@@ -23,16 +22,15 @@ int  main  (int i_argc, const char  * i_argv [])
         IM3FuncType ftype = NULL;
         
         result = SignatureToFuncType (& ftype, "");                     expect (result == m3Err_malformedFunctionSignature)
-        m3_Free (ftype);
+        m3Free (ftype);
         
-          // implicit void return
-        result = SignatureToFuncType (& ftype, "()");                   expect (result == m3Err_none)
-        m3_Free (ftype);
+        result = SignatureToFuncType (& ftype, "()");                   expect (result == m3Err_malformedFunctionSignature)
+        m3Free (ftype);
 
         result = SignatureToFuncType (& ftype, " v () ");               expect (result == m3Err_none)
                                                                         expect (ftype->numRets == 0)
                                                                         expect (ftype->numArgs == 0)
-        m3_Free (ftype);
+        m3Free (ftype);
 
         result = SignatureToFuncType (& ftype, "f(IiF)");               expect (result == m3Err_none)
                                                                         expect (ftype->numRets == 1)
@@ -45,8 +43,8 @@ int  main  (int i_argc, const char  * i_argv [])
         IM3FuncType ftype2 = NULL;
         result = SignatureToFuncType (& ftype2, "f(I i F)");            expect (result == m3Err_none);
                                                                         expect (AreFuncTypesEqual (ftype, ftype2));
-        m3_Free (ftype);
-        m3_Free (ftype2);
+        m3Free (ftype);
+        m3Free (ftype2);
     }
     
     
@@ -74,8 +72,7 @@ int  main  (int i_argc, const char  * i_argv [])
         Environment_Release (& env);                                    expect (CountCodePages (env.pagesReleased) == 0);
     }
     
-    
-    DisabledTest (codepages.b)
+    Test (codepages.b)
     {
         const u32 c_numPages = 2000;
         IM3CodePage pages [2000] = { NULL };
@@ -106,7 +103,7 @@ int  main  (int i_argc, const char  * i_argv [])
                 
             expect (runtime.numActiveCodePages == numActive);
         }
-          
+        
         printf ("num pages: %d\n", runtime.numCodePages);
         
         for (u32 i = 0; i < c_numPages; ++i)
@@ -122,48 +119,6 @@ int  main  (int i_argc, const char  * i_argv [])
         Runtime_Release (& runtime);
         Environment_Release (& env);
     }
-     
-     
-    Test (extensions)
-    {
-        M3Result result;
-        
-        IM3Environment env = m3_NewEnvironment ();
-
-        IM3Runtime runtime = m3_NewRuntime (env, 1024, NULL);
-
-        IM3Module module = m3_NewModule (env);
-
-        
-        i32 functionIndex = -1;
-        
-        u8 wasm [5] = { 0x04,       // size
-                        0x00,       // num local defs
-                        0x41, 0x37, // i32.const= 55
-                        0x0b        // end block
-        };
-        
-        // will partially fail (compilation) because module isn't attached to a runtime yet.
-        result = m3_InjectFunction (module, & functionIndex, "i()", wasm, true);        expect (result != m3Err_none)
-                                                                                        expect (functionIndex >= 0)
-
-        result = m3_LoadModule (runtime, module);                                       expect (result == m3Err_none)
-
-        // try again
-        result = m3_InjectFunction (module, & functionIndex, "i()", wasm, true);        expect (result == m3Err_none)
-
-        IM3Function function = m3_GetFunctionByIndex (module, functionIndex);           expect (function)
-        
-        if (function)
-        {
-            result = m3_CallV (function);                                               expect (result == m3Err_none)
-            u32 ret = 0;
-            m3_GetResultsV (function, & ret);                                           expect (ret == 55);
-        }
-        
-        m3_FreeRuntime (runtime);
-    }
-    
     
     return 0;
 }

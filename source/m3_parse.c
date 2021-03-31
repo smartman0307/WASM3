@@ -314,8 +314,6 @@ _   (ReadLEB_u32 (& numFunctions, & i_bytes, i_end));                           
 
     for (u32 f = 0; f < numFunctions; ++f)
     {
-        const u8 * start = i_bytes;
-        
         u32 size;
 _       (ReadLEB_u32 (& size, & i_bytes, i_end));
 
@@ -326,6 +324,8 @@ _       (ReadLEB_u32 (& size, & i_bytes, i_end));
 
             if (i_bytes <= i_end)
             {
+                const u8 * start = ptr;
+
                 u32 numLocalBlocks;
 _               (ReadLEB_u32 (& numLocalBlocks, & ptr, i_end));                                      m3log (parse, "    code size: %-4d", size);
 
