@@ -16,7 +16,7 @@
 
 M3Result AllocFuncType (IM3FuncType * o_functionType, u32 i_numTypes)
 {
-    *o_functionType = (IM3FuncType)m3_Malloc (sizeof (M3FuncType) + i_numTypes);
+    *o_functionType = (IM3FuncType) m3_Malloc (sizeof (M3FuncType) + i_numTypes);
     return (*o_functionType) ? m3Err_none : m3Err_mallocFailed;
 }
 
@@ -53,8 +53,8 @@ void  Function_Release  (IM3Function i_function)
 
     FreeImportInfo (& i_function->import);
 
-    //if (i_function->ownsWasmCode)
-    //    m3_Free (i_function->wasm);
+    if (i_function->ownsWasmCode)
+        m3_Free (i_function->wasm);
 
     // Function_FreeCompiledCode (func);
 
@@ -159,6 +159,20 @@ u32  GetFunctionNumReturns  (IM3Function i_function)
     return numReturns;
 }
 
+
+u8  GetFunctionReturnType  (IM3Function i_function, u32 i_index)
+{
+	u8 type = c_m3Type_none;
+	
+	if (i_index < GetFunctionNumReturns (i_function))
+	{
+		type = i_function->funcType->types [i_index];
+	}
+	
+	return type;
+}
+
+
 u32  GetFunctionNumArgsAndLocals (IM3Function i_function)
 {
     if (i_function)
@@ -177,21 +191,37 @@ void FreeImportInfo (M3ImportInfo * i_info)
 
 IM3Environment  m3_NewEnvironment  ()
 {
+    M3Result result = m3Err_none;
+    
     IM3Environment env = m3_AllocStruct (M3Environment);
-    if (!env) return NULL;
 
-    // create FuncTypes for all simple block return ValueTypes
-    for (int t = c_m3Type_none; t <= c_m3Type_f64; t++)
+    if (env)
     {
-        d_m3Assert (t < 5);
+        _try
+        {
+            // create FuncTypes for all simple block return ValueTypes
+            for (u8 t = c_m3Type_none; t <= c_m3Type_f64; t++)
+            {
+                IM3FuncType ftype;
+_               (AllocFuncType (& ftype, 1));
 
-        IM3FuncType ftype;
-        AllocFuncType (& ftype, 1);
-        ftype->numArgs = 0;
-        ftype->numRets = (t == c_m3Type_none) ? 0 : 1;
-        ftype->types[0] = t;
+                ftype->numArgs = 0;
+                ftype->numRets = (t == c_m3Type_none) ? 0 : 1;
+                ftype->types [0] = t;
 
-        env->retFuncTypes[t] = ftype;
+                Environment_AddFuncType (env, & ftype);
+
+                d_m3Assert (t < 5);
+                env->retFuncTypes [t] = ftype;
+            }
+        }
+    
+        _catch:
+        if (result)
+        {
+            m3_FreeEnvironment (env);
+            env = NULL;
+        }
     }
 
     return env;
@@ -208,13 +238,7 @@ void  Environment_Release  (IM3Environment i_environment)
         m3_Free (ftype);
         ftype = next;
     }
-    for (int t = c_m3Type_none; t <= c_m3Type_f64; t++)
-    {
-        d_m3Assert (t < 5);
-        ftype = i_environment->retFuncTypes[t];
-        d_m3Assert (ftype->next == NULL);
-        m3_Free (ftype);
-    }
+    
     m3log (runtime, "freeing %d pages from environment", CountCodePages (i_environment->pagesReleased));
     FreeCodePages (& i_environment->pagesReleased);
 }
@@ -230,6 +254,7 @@ void  m3_FreeEnvironment  (IM3Environment i_environment)
 }
 
 
+// returns the same io_funcType or replaces it with an equivalent that's already in the type linked list
 void  Environment_AddFuncType  (IM3Environment i_environment, IM3FuncType * io_funcType)
 {
     IM3FuncType addType = * io_funcType;
