@@ -57,7 +57,7 @@ _   (ReadLEB_u32 (& numTypes, & i_bytes, i_end));                               
         {
             i8 form;
 _           (ReadLEB_i7 (& form, & i_bytes, i_end));
-            _throwif (m3Err_wasmMalformed, form != -32); // for WA MVP
+            _throwif (m3Err_wasmMalformed, form != -32); // for Wasm MVP
 
             u32 numArgs;
 _           (ReadLEB_u32 (& numArgs, & i_bytes, i_end));
@@ -97,7 +97,7 @@ _               (NormalizeType (& retType, wasmType));
 
                 ftype->types[r] = retType;
             }
-            memcpy(ftype->types + numRets, argTypes, numArgs);                                m3log (parse, "    type %2d: %s", i, SPrintFuncTypeSignature (ftype));
+            memcpy (ftype->types + numRets, argTypes, numArgs);                             	m3log (parse, "    type %2d: %s", i, SPrintFuncTypeSignature (ftype));
 
             Environment_AddFuncType (io_module->environment, & ftype);
             io_module->funcTypes [i] = ftype;
@@ -236,12 +236,6 @@ _       (ReadLEB_u32 (& index, & i_bytes, i_end));                              
                 io_module->functions [index].names[numNames] = utf8;
                 utf8 = NULL; // ownership transferred to M3Function
             }
-        }
-        else if (exportKind == d_externalKind_global)
-        {
-            _throwif(m3Err_wasmMalformed, index >= io_module->numGlobals);
-            io_module->globals[index].name = utf8;
-            utf8 = NULL; // ownership transferred to M3Global
         }
 
         m3_Free (utf8);
