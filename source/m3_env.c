@@ -6,6 +6,7 @@
 //
 
 #include <stdarg.h>
+#include <limits.h>
 
 #include "m3_env.h"
 #include "m3_compile.h"
@@ -676,7 +677,9 @@ _           (ReadLEB_u32 (& numElements, & bytes, end));
 
             io_module->table0 = m3_ReallocArray (IM3Function, io_module->table0, endElement, io_module->table0Size);
             _throwifnull(io_module->table0);
-            io_module->table0Size = endElement;
+			
+			_throwif ("table overflow", endElement > UINT_MAX)
+            io_module->table0Size = (u32) endElement;
 
             for (u32 e = 0; e < numElements; ++e)
             {
@@ -750,6 +753,76 @@ _       (InitElements (io_module));
     _catch: return result;
 }
 
+IM3Global  m3_FindGlobal  (IM3Module               io_module,
+                           const char * const      i_globalName)
+{
+	// Search exports
+    for (u32 i = 0; i < io_module->numGlobals; ++i)
+    {
+        IM3Global g = & io_module->globals [i];
+        if (g->name and strcmp (g->name, i_globalName) == 0)
+        {
+            return g;
+        }
+    }
+
+	// Search imports
+    for (u32 i = 0; i < io_module->numGlobals; ++i)
+    {
+        IM3Global g = & io_module->globals [i];
+
+        if (g->import.moduleUtf8 and g->import.fieldUtf8)
+        {
+            if (strcmp (g->import.fieldUtf8, i_globalName) == 0)
+            {
+                return g;
+            }
+        }
+    }
+    return NULL;
+}
+
+M3Result  m3_GetGlobal  (IM3Global                 i_global,
+                         IM3TaggedValue            o_value)
+{
+    if (not i_global) return m3Err_globalLookupFailed;
+
+    switch (i_global->type) {
+    case c_m3Type_i32: o_value->value.i32 = i_global->intValue; break;
+    case c_m3Type_i64: o_value->value.i64 = i_global->intValue; break;
+    case c_m3Type_f32: o_value->value.f32 = i_global->f32Value; break;
+    case c_m3Type_f64: o_value->value.f64 = i_global->f64Value; break;
+    default: return m3Err_invalidTypeId;
+    }
+
+    o_value->type = i_global->type;
+    return m3Err_none;
+}
+
+M3Result  m3_SetGlobal  (IM3Global                 i_global,
+                         const IM3TaggedValue      i_value)
+{
+    if (not i_global) return m3Err_globalLookupFailed;
+    // TODO: if (not g->isMutable) return m3Err_globalNotMutable;
+
+    if (i_global->type != i_value->type) return m3Err_globalTypeMismatch;
+
+    switch (i_value->type) {
+    case c_m3Type_i32: i_global->intValue = i_value->value.i32; break;
+    case c_m3Type_i64: i_global->intValue = i_value->value.i64; break;
+    case c_m3Type_f32: i_global->f32Value = i_value->value.f32; break;
+    case c_m3Type_f64: i_global->f64Value = i_value->value.f64; break;
+    default: return m3Err_invalidTypeId;
+    }
+
+    return m3Err_none;
+}
+
+M3ValueType  m3_GetGlobalType  (IM3Global          i_global)
+{
+	return (i_global) ? i_global->type : c_m3Type_none;
+}
+
 
 void *  v_FindFunction  (IM3Module i_module, const char * const i_name)
 {
@@ -775,36 +848,40 @@ void *  v_FindFunction  (IM3Module i_module, const char * const i_name)
 
 M3Result  m3_FindFunction  (IM3Function * o_function, IM3Runtime i_runtime, const char * const i_functionName)
 {
-    M3Result result = m3Err_none;
+	M3Result result = m3Err_none;								d_m3Assert (o_function and i_runtime and i_functionName);
+	
+	IM3Function function = NULL;
 
-    if (!i_runtime->modules) {
-        return "no modules loaded";
+    if (not i_runtime->modules) {
+        _throw ("no modules loaded");
     }
 
-    IM3Function function = (IM3Function) ForEachModule (i_runtime, (ModuleVisitor) v_FindFunction, (void *) i_functionName);
+    function = (IM3Function) ForEachModule (i_runtime, (ModuleVisitor) v_FindFunction, (void *) i_functionName);
 
     if (function)
     {
         if (not function->compiled)
         {
-            result = Compile_Function (function);
-            if (result)
-                function = NULL;
+_			(Compile_Function (function))
         }
+		
+		// Check if start function needs to be called
+		if (function->module->startFunction)
+		{
+_			(m3_RunStart (function->module))
+		}
     }
-    else result = ErrorModule (m3Err_functionLookupFailed, i_runtime->modules, "'%s'", i_functionName);
+	else _throw (ErrorModule (m3Err_functionLookupFailed, i_runtime->modules, "'%s'", i_functionName));
 
-    // Check if start function needs to be called
-    if (function and function->module->startFunction) {
-        result = m3_RunStart (function->module);
-        if (result)
-            return result;
-    }
-
+	_catch:
+	if (result)
+		function = NULL;
+	
     * o_function = function;
 
-    return result;
+	return result;
 }
+
 
 uint32_t  m3_GetArgCount  (IM3Function i_function)
 {
