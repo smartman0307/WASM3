@@ -10,6 +10,7 @@
 
 #include "m3_code.h"
 #include "m3_exec_defs.h"
+#include "m3_function.h"
 
 d_m3BeginExternC
 
@@ -29,17 +30,6 @@ enum
     c_waOp_teeLocal             = 0x22,
 };
 
-typedef struct M3FuncType
-{
-    struct M3FuncType *     next;
-
-    u32                     numRets;
-    u32                     numArgs;
-    u8                      types[];        // returns, then args
-}
-M3FuncType;
-
-typedef M3FuncType *        IM3FuncType;
 
 #define d_FuncRetType(ftype,i)  ((ftype)->types[(i)])
 #define d_FuncArgType(ftype,i)  ((ftype)->types[(ftype)->numRets + (i)])
@@ -66,7 +56,6 @@ typedef struct M3CompilationScope
     pc_t                            pc;                 // used by ContinueLoop's
     IM3BranchPatch                  patches;
     i32                             depth;
-//    i32                             loopDepth;
     i16                             initStackIndex;
     IM3FuncType                     type;
     m3opcode_t                      opcode;
@@ -75,9 +64,6 @@ typedef struct M3CompilationScope
 M3CompilationScope;
 
 typedef M3CompilationScope *        IM3CompilationScope;
-
-// double the slot count when using 32-bit slots, since every wasm stack element could be a 64-bit type
-//static const u16 c_m3MaxFunctionSlots = d_m3MaxFunctionStackHeight * (d_m3Use32BitSlots + 1);
 
 typedef struct
 {
@@ -199,7 +185,7 @@ bool        IsIntRegisterLocation       (i16 i_location);
 
 bool        IsStackPolymorphic          (IM3Compilation o);
 
-M3Result    CompileBlock                (IM3Compilation io, IM3FuncType i_blockType, u8 i_blockOpcode);
+M3Result    CompileBlock                (IM3Compilation io, IM3FuncType i_blockType, m3opcode_t i_blockOpcode);
 
 M3Result    Compile_BlockStatements     (IM3Compilation io);
 M3Result    Compile_Function            (IM3Function io_function);
