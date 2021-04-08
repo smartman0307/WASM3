@@ -11,7 +11,6 @@ set(sources
     "m3_emit.c"
     "m3_env.c"
     "m3_exec.c"
-    "m3_function.c"
     "m3_info.c"
     "m3_module.c"
     "m3_parse.c"
