@@ -85,14 +85,14 @@ typedef struct
     u32                 numEmits;
     u32                 numOpcodes;
 
-    u16                 firstDynamicStackIndex;
+    u16                 stackFirstDynamicIndex;
     u16                 stackIndex;                 // current stack index
 
-    u16                 firstConstSlotIndex;
-    u16                 maxConstSlotIndex;             // as const's are encountered during compilation this tracks their location in the "real" stack
+    u16                 slotFirstConstIndex;
+    u16                 slotMaxConstIndex;             // as const's are encountered during compilation this tracks their location in the "real" stack
 
-    u16                 firstLocalSlotIndex;
-    u16                 firstDynamicSlotIndex;      // numArgs + numLocals + numReservedConstants. the first mutable slot available to the compiler.
+    u16                 slotFirstLocalIndex;
+    u16                 slotFirstDynamicIndex;      // numArgs + numLocals + numReservedConstants. the first mutable slot available to the compiler.
 
     m3slot_t            constants                   [d_m3MaxConstantTableSize];
 
@@ -103,7 +103,7 @@ typedef struct
     // 'm3Slots' contains allocation usage counts
     u8                  m3Slots                     [d_m3MaxFunctionSlots];
 
-    u16                 maxAllocatedSlotPlusOne;
+    u16                 slotMaxAllocatedIndexPlusOne;
 
     u16                 regStackIndexPlusOne        [2];
 
@@ -138,7 +138,17 @@ M3OpInfo;
 
 typedef const M3OpInfo *    IM3OpInfo;
 
-extern const M3OpInfo* GetOpInfo(m3opcode_t opcode);
+extern const M3OpInfo c_operations [];
+extern const M3OpInfo c_operationsFC [];
+
+static inline
+const M3OpInfo* GetOpInfo(m3opcode_t opcode) {
+    switch (opcode >> 8) {
+    case 0x00: return &c_operations[opcode];
+    case 0xFC: return &c_operationsFC[opcode & 0xFF];
+    default:   return NULL;
+    }
+}
 
 // TODO: This helper should be removed, when MultiValue is implemented
 static inline
