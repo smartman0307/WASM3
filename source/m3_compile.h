@@ -89,7 +89,7 @@ typedef struct
     u16                 stackIndex;                 // current stack index
 
     u16                 slotFirstConstIndex;
-    u16                 slotMaxConstIndex;             // as const's are encountered during compilation this tracks their location in the "real" stack
+    u16                 slotMaxConstIndex;          // as const's are encountered during compilation this tracks their location in the "real" stack
 
     u16                 slotFirstLocalIndex;
     u16                 slotFirstDynamicIndex;      // numArgs + numLocals + numReservedConstants. the first mutable slot available to the compiler.
@@ -138,17 +138,7 @@ M3OpInfo;
 
 typedef const M3OpInfo *    IM3OpInfo;
 
-extern const M3OpInfo c_operations [];
-extern const M3OpInfo c_operationsFC [];
-
-static inline
-const M3OpInfo* GetOpInfo(m3opcode_t opcode) {
-    switch (opcode >> 8) {
-    case 0x00: return &c_operations[opcode];
-    case 0xFC: return &c_operationsFC[opcode & 0xFF];
-    default:   return NULL;
-    }
-}
+extern const M3OpInfo* GetOpInfo(m3opcode_t opcode);
 
 // TODO: This helper should be removed, when MultiValue is implemented
 static inline
