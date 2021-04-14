@@ -591,32 +591,33 @@ _   (Read_u32 (& version, & pos, end));
 
     _throwif (m3Err_wasmMalformed, magic != 0x6d736100);
     _throwif (m3Err_incompatibleWasmVersion, version != 1);
-
-    static const u8 sectionsOrder[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 10, 11, 0 }; // 0 is a placeholder
-    u8 expectedSection = 0;
+                                                                                    m3log (parse,  "found magic + version");
+    u8 previousSection = 0;
 
     while (pos < end)
     {
         u8 section;
 _       (ReadLEB_u7 (& section, & pos, end));
 
-        if (section != 0) {
-            // Ensure sections appear only once and in order
-            while (sectionsOrder[expectedSection++] != section) {
-                _throwif(m3Err_misorderedWasmSection, expectedSection >= 12);
-            }
+        if (section > previousSection or                    // from the spec: sections must appear in order
+            section == 0 or                                 // custom section
+            (section == 12 and previousSection == 9) or     // if present, DataCount goes after Element
+            (section == 10 and previousSection == 12))      // and before Code
+        {
+            u32 sectionLength;
+_           (ReadLEB_u32 (& sectionLength, & pos, end));
+            _throwif(m3Err_wasmMalformed, pos + sectionLength > end);
+_           (ParseModuleSection (module, section, pos, sectionLength));
+
+            pos += sectionLength;
+
+            if (section)
+                previousSection = section;
         }
-
-        u32 sectionLength;
-_       (ReadLEB_u32 (& sectionLength, & pos, end));
-        _throwif(m3Err_wasmMalformed, pos + sectionLength > end);
-
-_       (ParseModuleSection (module, section, pos, sectionLength));
-
-        pos += sectionLength;
+        else _throw (m3Err_misorderedWasmSection);
     }
 
-} _catch:
+    } _catch:
 
     if (result)
     {
