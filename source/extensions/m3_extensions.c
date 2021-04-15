@@ -95,7 +95,7 @@ _       (Module_AddFunction (i_module, funcTypeIndex, NULL));
     if (i_doCompilation and not i_module->runtime)
         _throw ("module must be loaded into runtime to compile function");
 
-_   (CompileFunction (function));
+_   (Compile_Function (function));
 
     _catch:
     m3_Free (ftype);

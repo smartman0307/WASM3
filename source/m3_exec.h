@@ -552,7 +552,7 @@ d_m3Op  (CallIndirect)
             if (LIKELY(type == function->funcType))
             {
                 if (UNLIKELY(not function->compiled))
-                    r = CompileFunction (function);
+                    r = Compile_Function (function);
 
                 if (LIKELY(not r))
                 {
@@ -700,7 +700,7 @@ d_m3Op  (Compile)
     m3ret_t result = m3Err_none;
 
     if (UNLIKELY(not function->compiled)) // check to see if function was compiled since this operation was emitted.
-        result = CompileFunction (function);
+        result = Compile_Function (function);
 
     if (not result)
     {
@@ -1106,32 +1106,28 @@ d_m3Op  (BranchIf_s)
 }
 
 
-d_m3Op  (BranchIfPrologue_r)
-{
-    i32 condition   = (i32) _r0;
-    pc_t branch     = immediate (pc_t);
-
-    if (condition)
-    {
-        // this is the "prologue" that ends with
-        // a plain branch to the actual target
-        nextOp ();
-    }
-    else jumpOp (branch); // jump over the prologue
+// branching to blocks that produce a (int) value
+#define d_m3BranchIf(TYPE, LABEL, COND)         \
+d_m3Op  (TYPE##_BranchIf_##LABEL##s)            \
+{                                               \
+    i32 condition   = (i32) COND;               \
+    TYPE value      = slot (TYPE);              \
+    pc_t branch     = immediate (pc_t);         \
+                                                \
+    if (condition)                              \
+    {                                           \
+        _r0 = value;                            \
+        jumpOp (branch);                        \
+    }                                           \
+    else nextOp ();                             \
 }
 
 
-d_m3Op  (BranchIfPrologue_s)
-{
-    i32 condition   = slot (i32);
-    pc_t branch     = immediate (pc_t);
+d_m3BranchIf (i32, r, _r0)
+d_m3BranchIf (i64, r, _r0)
+d_m3BranchIf (i32, s, slot (i32))
+d_m3BranchIf (i64, s, slot (i32))
 
-    if (condition)
-    {
-        nextOp ();
-    }
-    else jumpOp (branch);
-}
 
 
 d_m3Op  (ContinueLoop)

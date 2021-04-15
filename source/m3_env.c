@@ -177,7 +177,7 @@ IM3Runtime  m3_NewRuntime  (IM3Environment i_environment, u32 i_stackSizeInBytes
         runtime->environment = i_environment;
         runtime->userdata = i_userdata;
 
-        runtime->stack = m3_Malloc (i_stackSizeInBytes);
+        runtime->stack = m3_Malloc (i_stackSizeInBytes + 4*sizeof (m3slot_t)); // TODO: more precise stack checks
 
         if (runtime->stack)
         {
@@ -221,12 +221,28 @@ void *  _FreeModule  (IM3Module i_module, void * i_info)
 }
 
 
+
+void  FreeCompilationPatches  (IM3Compilation o)
+{
+    IM3BranchPatch patches = o->releasedPatches;
+
+    while (patches)
+    {
+        IM3BranchPatch next = patches->next;
+        m3_Free (patches);
+        patches = next;
+    }
+}
+
+
 void  Runtime_Release  (IM3Runtime i_runtime)
 {
     ForEachModule (i_runtime, _FreeModule, NULL);                   d_m3Assert (i_runtime->numActiveCodePages == 0);
 
     Environment_ReleaseCodePages (i_runtime->environment, i_runtime->pagesOpen);
     Environment_ReleaseCodePages (i_runtime->environment, i_runtime->pagesFull);
+
+    FreeCompilationPatches (& i_runtime->compilation);
 
     m3_Free (i_runtime->stack);
     m3_Free (i_runtime->memory.mallocated);
@@ -519,7 +535,7 @@ M3Result  m3_RunStart  (IM3Module io_module)
 
         if (not function->compiled)
         {
-_           (CompileFunction (function));
+_           (Compile_Function (function));
         }
 
         IM3FuncType ftype = function->funcType;
@@ -675,7 +691,7 @@ M3Result  m3_FindFunction  (IM3Function * o_function, IM3Runtime i_runtime, cons
     {
         if (not function->compiled)
         {
-_           (CompileFunction (function))
+_           (Compile_Function (function))
         }
 
         // Check if start function needs to be called

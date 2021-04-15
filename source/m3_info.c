@@ -345,9 +345,9 @@ void  dump_type_stack  (IM3Compilation o)
 
         u16 slot = o->wasmStack [i];
 
-        if (IsRegisterSlotAlias (slot))
+        if (IsRegisterLocation (slot))
         {
-            bool isFp = IsFpRegisterSlotAlias (slot);
+            bool isFp = IsFpRegisterLocation (slot);
             printf ("%s", isFp ? "f0" : "r0");
 
             regAllocated [isFp]--;
