@@ -552,7 +552,7 @@ d_m3Op  (CallIndirect)
             if (LIKELY(type == function->funcType))
             {
                 if (UNLIKELY(not function->compiled))
-                    r = Compile_Function (function);
+                    r = CompileFunction (function);
 
                 if (LIKELY(not r))
                 {
@@ -700,7 +700,7 @@ d_m3Op  (Compile)
     m3ret_t result = m3Err_none;
 
     if (UNLIKELY(not function->compiled)) // check to see if function was compiled since this operation was emitted.
-        result = Compile_Function (function);
+        result = CompileFunction (function);
 
     if (not result)
     {
@@ -1087,9 +1087,9 @@ d_m3Op  (BranchIf_r)
 
     if (condition)
     {
-        jumpOp (branch);
+		nextOp ();
     }
-    else nextOp ();
+	else jumpOp (branch);
 }
 
 
@@ -1100,34 +1100,10 @@ d_m3Op  (BranchIf_s)
 
     if (condition)
     {
-        jumpOp (branch);
+		nextOp ();
     }
-    else nextOp ();
+	else jumpOp (branch);
 }
-
-
-// branching to blocks that produce a (int) value
-#define d_m3BranchIf(TYPE, LABEL, COND)         \
-d_m3Op  (TYPE##_BranchIf_##LABEL##s)            \
-{                                               \
-    i32 condition   = (i32) COND;               \
-    TYPE value      = slot (TYPE);              \
-    pc_t branch     = immediate (pc_t);         \
-                                                \
-    if (condition)                              \
-    {                                           \
-        _r0 = value;                            \
-        jumpOp (branch);                        \
-    }                                           \
-    else nextOp ();                             \
-}
-
-
-d_m3BranchIf (i32, r, _r0)
-d_m3BranchIf (i64, r, _r0)
-d_m3BranchIf (i32, s, slot (i32))
-d_m3BranchIf (i64, s, slot (i32))
-
 
 
 d_m3Op  (ContinueLoop)

@@ -89,7 +89,9 @@ typedef struct M3Module
     u32                     numFuncTypes;
     IM3FuncType *           funcTypes;              // array of pointers to list of FuncTypes
 
-    u32                     numFuncImports;
+    u32                     numImports;
+    //IM3Function *           imports;   b          // notice: "I" prefix. imports are pointers to functions in another module.
+
     u32                     numFunctions;
     M3Function *            functions;
 

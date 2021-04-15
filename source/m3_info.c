@@ -334,7 +334,7 @@ void  dump_type_stack  (IM3Compilation o)
     i32 regAllocated [2] = { (i32) IsRegisterAllocated (o, 0), (i32) IsRegisterAllocated (o, 1) };
 
     // display whether r0 or fp0 is allocated. these should then also be reflected somewhere in the stack too.
-    d_m3Log(stack, "\n");
+	d_m3Log(stack, "\n");
     d_m3Log(stack, "        ");
     printf ("%s %s    ", regAllocated [0] ? "(r0)" : "    ", regAllocated [1] ? "(fp0)" : "     ");
 
@@ -345,9 +345,9 @@ void  dump_type_stack  (IM3Compilation o)
 
         u16 slot = o->wasmStack [i];
 
-        if (IsRegisterLocation (slot))
+        if (IsRegisterSlotAlias (slot))
         {
-            bool isFp = IsFpRegisterLocation (slot);
+            bool isFp = IsFpRegisterSlotAlias (slot);
             printf ("%s", isFp ? "f0" : "r0");
 
             regAllocated [isFp]--;
@@ -373,33 +373,33 @@ void  dump_type_stack  (IM3Compilation o)
 
     for (u32 r = 0; r < 2; ++r)
         d_m3Assert (regAllocated [r] == 0);         // reg allocation & stack out of sync
-    
-    u16 maxSlot = GetMaxUsedSlotPlusOne (o);
-    
-    if (maxSlot > o->slotFirstDynamicIndex)
-    {
-        d_m3Log (stack, "                      -");
+	
+	u16 maxSlot = GetMaxUsedSlotPlusOne (o);
+	
+	if (maxSlot > o->slotFirstDynamicIndex)
+	{
+		d_m3Log (stack, "                      -");
 
-        for (u16 i = o->slotFirstDynamicIndex; i < maxSlot; ++i)
-            printf ("----");
+		for (u16 i = o->slotFirstDynamicIndex; i < maxSlot; ++i)
+			printf ("----");
 
-        printf ("\n");
+		printf ("\n");
 
-        d_m3Log (stack, "                 slot |");
-        for (u16 i = o->slotFirstDynamicIndex; i < maxSlot; ++i)
-            printf ("%3d|", i);
+		d_m3Log (stack, "                 slot |");
+		for (u16 i = o->slotFirstDynamicIndex; i < maxSlot; ++i)
+			printf ("%3d|", i);
 
-        printf ("\n");
-        d_m3Log (stack, "                alloc |");
+		printf ("\n");
+		d_m3Log (stack, "                alloc |");
 
-        for (u16 i = o->slotFirstDynamicIndex; i < maxSlot; ++i)
-        {
-            printf ("%3d|", o->m3Slots [i]);
-        }
-        
-        printf ("\n");
-    }
-    d_m3Log(stack, "\n");
+		for (u16 i = o->slotFirstDynamicIndex; i < maxSlot; ++i)
+		{
+			printf ("%3d|", o->m3Slots [i]);
+		}
+		
+		printf ("\n");
+	}
+	d_m3Log(stack, "\n");
 }
 
 
