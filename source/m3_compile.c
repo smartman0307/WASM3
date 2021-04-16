@@ -112,7 +112,7 @@ i16  GetStackTopIndex  (IM3Compilation o)
 
 u16  GetStackHeight (IM3Compilation o)
 {
-	return o->stackIndex - o->stackFirstDynamicIndex;
+    return o->stackIndex - o->stackFirstDynamicIndex;
 }
 
 u8  GetStackTopTypeAtOffset  (IM3Compilation o, u16 i_offset)
@@ -1243,8 +1243,10 @@ _           ((i_opcode == 0x23) ? Compile_GetGlobal (o, global) : Compile_SetGlo
 
 M3Result  EmitPatchingBranch  (IM3Compilation o, IM3CompilationScope i_scope)
 {
-    M3Result result;
+    M3Result result ;
 
+_try {
+    
 _   (EmitOp (o, op_Branch));
     
     // IM3BranchPatch is two word struct; reserve two words
@@ -1253,7 +1255,7 @@ _   (EmitOp (o, op_Branch));
     patch->next = i_scope->patches;
     i_scope->patches = patch;
 
-    _catch:
+}   _catch:
     return result;
 }
 
@@ -2457,6 +2459,9 @@ _   (EmitOp (o, op_Entry));
     EmitPointer (o, io_function);
 
 _   (CompileBlockStatements (o));
+
+    // TODO: validate opcode sequences
+    _throwif(m3Err_wasmMalformed, o->previousOpcode != c_waOp_end);
 
     io_function->compiled = pc;
 
