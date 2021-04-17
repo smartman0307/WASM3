@@ -65,7 +65,7 @@ commands_full = [
     "args":           ["16", "64"],
     "expect_sha1":    "d85df3561eb15f6f0e6f20d5640e8e1306222c6d"
   }, {
-    "skip":           True,  # TODO
+    "skip":           True,  # Fails on Windows-uvwasi, on CI only (CNR locally)
     "name":           "mal",
     "wasm":           "./wasi/mal/mal.wasm",
     "args":           ["./wasi/mal/test-fib.mal", "16"],
@@ -127,7 +127,6 @@ commands_fast = [
     "args":           ["4", "32"],
     "expect_sha1":    "ea05d85998b2f453b588ef76a1256215bf9b851c"
   }, {
-    "skip":           True,  # TODO
     "name":           "mal",
     "wasm":           "./wasi/mal/mal.wasm",
     "args":           ["./wasi/mal/test-fib.mal", "16"],
@@ -177,9 +176,9 @@ for cmd in commands:
         stats.timeout += 1
         fail("Timeout")
         continue
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError:
         stats.crashed += 1
-        fail(f"Exited with error code {e.returncode}")
+        fail("Crashed")
         continue
 
     if "expect_sha1" in cmd:

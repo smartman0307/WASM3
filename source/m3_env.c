@@ -286,10 +286,6 @@ M3Result  EvaluateExpression  (IM3Module i_module, void * o_expressed, u8 i_type
         pc_t m3code = GetPagePC (o->page);
         result = CompileBlock (o, ftype, c_waOp_block);
 
-        if (not result && o->maxStackSlots >= runtime.numStackSlots) {
-            result = m3Err_trapStackOverflow;
-        }
-
         if (not result)
         {
             m3ret_t r = Call (m3code, stack, NULL, d_m3OpDefaultArgs);
@@ -546,32 +542,28 @@ M3Result  m3_LoadModule  (IM3Runtime io_runtime, IM3Module io_module)
 {
     M3Result result = m3Err_none;
 
-    if (UNLIKELY(io_module->runtime)) {
-        return m3Err_moduleAlreadyLinked;
+    if (not io_module->runtime)
+    {
+        io_module->runtime = io_runtime;
+        M3Memory * memory = & io_runtime->memory;
+
+_       (InitMemory (io_runtime, io_module));
+_       (InitGlobals (io_module));
+_       (InitDataSegments (memory, io_module));
+_       (InitElements (io_module));
+
+        io_module->next = io_runtime->modules;
+        io_runtime->modules = io_module;
+
+        // Start func might use imported functions, which are not liked here yet,
+        // so it will be called before a function call is attempted (in m3_FindFuSnction)
     }
+    else result = m3Err_moduleAlreadyLinked;
 
-    io_module->runtime = io_runtime;
-    M3Memory * memory = & io_runtime->memory;
+    if (result)
+        io_module->runtime = NULL;
 
-_   (InitMemory (io_runtime, io_module));
-_   (InitGlobals (io_module));
-_   (InitDataSegments (memory, io_module));
-_   (InitElements (io_module));
-
-    // Start func might use imported functions, which are not liked here yet,
-    // so it will be called before a function call is attempted (in m3_FindFunction)
-
-#ifdef DEBUG
-    Module_GenerateNames(io_module);
-#endif
-
-    io_module->next = io_runtime->modules;
-    io_runtime->modules = io_module;
-    return result; // ok
-
-_catch:
-    io_module->runtime = NULL;
-    return result;
+    _catch: return result;
 }
 
 IM3Global  m3_FindGlobal  (IM3Module               io_module,
