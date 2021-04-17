@@ -247,20 +247,24 @@ d_m3Decoder  (BranchTable)
 {
     u32 slot = fetch (u32);
 
-    o_string += sprintf (o_string, "slot: %" PRIu32 "; targets: ", slot);
+    sprintf (o_string, "slot: %" PRIu32 "; targets: ", slot);
 
 //    IM3Function function = fetch2 (IM3Function);
 
     i32 targets = fetch (i32);
 
+    char str [1000];
+
     for (i32 i = 0; i < targets; ++i)
     {
         pc_t addr = fetch (pc_t);
-        o_string += sprintf (o_string, "%" PRIi32 "=%p, ", i, addr);
+        sprintf (str, "%" PRIi32 "=%p, ", i, addr);
+        strcat (o_string, str);
     }
 
     pc_t addr = fetch (pc_t);
-    sprintf (o_string, "def=%p ", addr);
+    sprintf (str, "def=%p ", addr);
+    strcat (o_string, str);
 }
 
 
@@ -308,7 +312,7 @@ void  dump_code_page  (IM3CodePage i_codePage, pc_t i_startPC)
 
                 if (i.info)
                 {
-                    char infoString [8*1024] = { 0 };
+                    char infoString [1000] = { 0 };
 
                     DecodeOperation (infoString, i.opcode, op, i.info, & pc);
 
