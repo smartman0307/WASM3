@@ -247,24 +247,20 @@ d_m3Decoder  (BranchTable)
 {
     u32 slot = fetch (u32);
 
-    sprintf (o_string, "slot: %" PRIu32 "; targets: ", slot);
+    o_string += sprintf (o_string, "slot: %" PRIu32 "; targets: ", slot);
 
 //    IM3Function function = fetch2 (IM3Function);
 
     i32 targets = fetch (i32);
 
-    char str [1000];
-
     for (i32 i = 0; i < targets; ++i)
     {
         pc_t addr = fetch (pc_t);
-        sprintf (str, "%" PRIi32 "=%p, ", i, addr);
-        strcat (o_string, str);
+        o_string += sprintf (o_string, "%" PRIi32 "=%p, ", i, addr);
     }
 
     pc_t addr = fetch (pc_t);
-    sprintf (str, "def=%p ", addr);
-    strcat (o_string, str);
+    sprintf (o_string, "def=%p ", addr);
 }
 
 
@@ -312,7 +308,7 @@ void  dump_code_page  (IM3CodePage i_codePage, pc_t i_startPC)
 
                 if (i.info)
                 {
-                    char infoString [1000] = { 0 };
+                    char infoString [8*1024] = { 0 };
 
                     DecodeOperation (infoString, i.opcode, op, i.info, & pc);
 
@@ -389,9 +385,9 @@ void  dump_type_stack  (IM3Compilation o)
 
     for (u32 r = 0; r < 2; ++r)
         d_m3Assert (regAllocated [r] == 0);         // reg allocation & stack out of sync
-    
+
     u16 maxSlot = GetMaxUsedSlotPlusOne (o);
-    
+
     if (maxSlot > o->slotFirstDynamicIndex)
     {
         d_m3Log (stack, "                      -");
@@ -412,7 +408,7 @@ void  dump_type_stack  (IM3Compilation o)
         {
             printf ("%3d|", o->m3Slots [i]);
         }
-        
+
         printf ("\n");
     }
     d_m3Log(stack, "\n");
