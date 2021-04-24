@@ -1101,7 +1101,7 @@ _   (PushConst (o, value.u, c_m3Type_f64));
 }
 #endif
 
-#ifdef d_m3CompileExtendedOpcode
+#ifdef d_m3EnableExtendedOpcodes
 
 M3Result  Compile_ExtendedOpcode  (IM3Compilation o, m3opcode_t i_opcode)
 {
@@ -1665,7 +1665,7 @@ M3Result  Compile_Memory_Grow  (IM3Compilation o, m3opcode_t i_opcode)
 _   (ReadLEB_i7 (& reserved, & o->wasm, o->wasmEnd));
 
 _   (CopyStackTopToRegister (o, false));
-_   (Pop (o));
+_   (PopType (o, c_m3Type_i32));
 
 _   (EmitOp     (o, op_MemGrow));
 
@@ -1673,6 +1673,33 @@ _   (PushRegister (o, c_m3Type_i32));
 
     _catch: return result;
 }
+
+
+M3Result  Compile_Memory_CopyFill  (IM3Compilation o, m3opcode_t i_opcode)
+{
+    M3Result result = m3Err_none;
+    
+    i8 reserved;
+_   (ReadLEB_i7 (& reserved, & o->wasm, o->wasmEnd));
+    
+    IM3Operation op;
+    if (i_opcode == c_waOp_memoryCopy)
+    {
+_       (ReadLEB_i7 (& reserved, & o->wasm, o->wasmEnd));
+        op = op_MemCopy;
+    }
+    else op = op_MemFill;
+
+_   (CopyStackTopToRegister (o, false));
+_   (PopType (o, c_m3Type_i32));
+_   (PopType (o, c_m3Type_i32));
+_   (PopType (o, c_m3Type_i32));
+
+_   (EmitOp  (o, op));
+    
+    _catch: return result;
+}
+
 
 static
 M3Result  ReadBlockType  (IM3Compilation o, IM3FuncType * o_blockType)
@@ -2048,7 +2075,7 @@ _           (PushRegister (o, op->type));
 #       ifdef DEBUG
             result = ErrorCompile ("no operation found for opcode", o, "'%s'", op->name);
 #       else
-            result = ErrorCompile ("no operation found for opcode", o, "");
+            result = ErrorCompile ("no operation found for opcode", o, "%x", i_opcode);
 #       endif
         _throw (result);
     }
@@ -2364,7 +2391,7 @@ const M3OpInfo c_operations [] =
     d_m3DebugTypedOp (SetRegister), d_m3DebugTypedOp (SetSlot),     d_m3DebugTypedOp (PreserveSetSlot),
 # endif
 
-# ifdef d_m3CompileExtendedOpcode
+# ifdef d_m3EnableExtendedOpcodes
     [0xFC] = M3OP( "0xFC", 0, c_m3Type_unknown,   d_emptyOpList,  Compile_ExtendedOpcode ),
 # endif
 
@@ -2384,8 +2411,14 @@ const M3OpInfo c_operationsFC [] =
     M3OP_F( "i64.trunc_s:sat/f64",0,  i_64,   d_convertOpList (i64_TruncSat_f64),        Compile_Convert ),  // 0x06
     M3OP_F( "i64.trunc_u:sat/f64",0,  i_64,   d_convertOpList (u64_TruncSat_f64),        Compile_Convert ),  // 0x07
 
+    M3OP_RESERVED, M3OP_RESERVED,
+    
+    M3OP( "memory.copy",            0,  none,   d_emptyOpList,                           Compile_Memory_CopyFill ), // 0x0a
+    M3OP( "memory.fill",            0,  none,   d_emptyOpList,                           Compile_Memory_CopyFill ), // 0x0b
+
+
 # ifdef DEBUG
-    M3OP_F( "termination", 0, c_m3Type_unknown ) // for find_operation_info
+    M3OP( "termination", 0, c_m3Type_unknown ) // for find_operation_info
 # endif
 };
 
@@ -2431,9 +2464,9 @@ _       (Read_opcode (& opcode, & o->wasm, o->wasmEnd));                log_opco
         }
 
         IM3OpInfo opinfo = GetOpInfo(opcode);
-		
-		if (opinfo == NULL)
-			_throw (ErrorCompile (m3Err_unknownOpcode, o, "opcode '%x' not available", opcode));
+        
+        if (opinfo == NULL)
+            _throw (ErrorCompile (m3Err_unknownOpcode, o, "opcode '%x' not available", opcode));
 
         if (opinfo->compiler) {
 _           ((* opinfo->compiler) (o, opcode))
