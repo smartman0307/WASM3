@@ -11,7 +11,8 @@
 
 #include <m3_api_defs.h>
 #include "wasm3.h"
-
+/* FIXME: remove when there is a public API to get function return value */
+#include "m3_env.h"
 
 namespace wasm3 {
     /** @cond */
@@ -23,21 +24,19 @@ namespace wasm3 {
         typedef const void *(*m3_api_raw_fn)(IM3Runtime, uint64_t *, void *);
 
         template<typename T>
-        void arg_from_stack(T &dest, stack_type &_sp, mem_type mem) {
-            m3ApiGetArg(T, tmp);
-            dest = tmp;
+        void arg_from_stack(T &dest, stack_type &psp, mem_type mem) {
+            dest = *(T *) (psp);
+            psp++;
         }
 
         template<typename T>
-        void arg_from_stack(T* &dest, stack_type &_sp, mem_type _mem) {
-            m3ApiGetArgMem(T*, tmp);
-            dest = tmp;
+        void arg_from_stack(T* &dest, stack_type &psp, mem_type _mem) {
+            dest = (void*) m3ApiOffsetToPtr(* ((u32 *) (psp++)));
         };
 
         template<typename T>
-        void arg_from_stack(const T* &dest, stack_type &_sp, mem_type _mem) {
-            m3ApiGetArgMem(const T*, tmp);
-            dest = tmp;
+        void arg_from_stack(const T* &dest, stack_type &psp, mem_type _mem) {
+            dest = (void*) m3ApiOffsetToPtr(* ((u32 *) (psp++)));
         };
 
         template<char c>
@@ -78,14 +77,13 @@ namespace wasm3 {
 
         template <typename Ret, typename ...Args, Ret (*Fn)(Args...)>
         struct wrap_helper<Fn> {
-            static const void *wrap_fn(IM3Runtime rt, IM3ImportContext _ctx, stack_type _sp, mem_type mem) {
+            static const void *wrap_fn(IM3Runtime rt, IM3ImportContext _ctx, stack_type sp, mem_type mem) {
+                Ret *ret_ptr = (Ret *) (sp);
                 std::tuple<Args...> args;
-                // The order here matters: m3ApiReturnType should go before calling get_args_from_stack,
-                // since both modify `_sp`, and the return value on the stack is reserved before the arguments.
-                m3ApiReturnType(Ret);
-                get_args_from_stack(_sp, mem, args);
+                get_args_from_stack(sp, mem, args);
                 Ret r = std::apply(Fn, args);
-                m3ApiReturn(r);
+                *ret_ptr = r;
+                return m3Err_none;
             }
         };
 
@@ -256,7 +254,6 @@ namespace wasm3 {
         friend class runtime;
 
         module(const std::shared_ptr<M3Environment> &env, std::istream &in_wasm) {
-            in_wasm.unsetf(std::ios::skipws);
             std::vector<uint8_t> in_bytes;
             std::copy(std::istream_iterator<uint8_t>(in_wasm),
                       std::istream_iterator<uint8_t>(),
@@ -315,13 +312,21 @@ namespace wasm3 {
             M3Result res = m3_CallArgv(m_func, sizeof...(args), argv);
             detail::check_error(res);
             Ret ret;
-            res = m3_GetResults(m_func, 1, &ret);
-            detail::check_error(res);
+            /* FIXME: there should be a public API to get the return value */
+            auto sp = (detail::stack_type) m_runtime->stack;
+            detail::arg_from_stack(ret, sp, nullptr);
             return ret;
         }
 
         /**
          * Call the function with the provided arguments (int/float types).
+         *
+         * WASM3 only accepts string arguments when calling WASM functions, and automatically converts them
+         * into the correct type based on the called function signature.
+         *
+         * This function provides a way to pass integer/float types, by first converting them to strings,
+         * and then letting WASM3 do the reverse conversion. This is to be fixed once WASM3 gains an equivalent
+         * of m3_CallArgv which can accept arbitrary types, not just strings.
          *
          * Note that the type of the return value must be explicitly specified as a template argument.
          *
@@ -329,13 +334,17 @@ namespace wasm3 {
          */
         template<typename Ret, typename ... Args>
         Ret call(Args... args) {
-            const void *arg_ptrs[] = { reinterpret_cast<const void*>(&args)... };
-            M3Result res = m3_Call(m_func, sizeof...(args), arg_ptrs);
+            std::string argv_str[] = {std::to_string(args)...};
+            const char* argv[sizeof...(Args)];
+            for (size_t i = 0; i < sizeof...(Args); ++i) {
+                argv[i] = argv_str[i].c_str();
+            }
+            M3Result res = m3_CallArgv(m_func, sizeof...(args), argv);
             detail::check_error(res);
             Ret ret;
-            const void* ret_ptrs[] = { &ret };
-            res = m3_GetResults(m_func, 1, ret_ptrs);
-            detail::check_error(res);
+            /* FIXME: there should be a public API to get the return value */
+            auto sp = (detail::stack_type) m_runtime->stack;
+            detail::arg_from_stack(ret, sp, nullptr);
             return ret;
         }
 
