@@ -56,7 +56,7 @@ m3ApiRawFunction(metering_usegas)
 
     current_gas -= gas;
 
-    if (M3_UNLIKELY(current_gas < 0)) {
+    if (UNLIKELY(current_gas < 0)) {
         m3ApiTrap("[trap] Out of gas");
     }
     m3ApiSuccess();
