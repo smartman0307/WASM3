@@ -139,7 +139,7 @@ namespace wasm3 {
 
     /** @cond */
     namespace detail {
-        static inline void check_error(M3Result err) {
+        void check_error(M3Result err) {
             if (err != m3Err_none) {
                 throw error(err);
             }
@@ -378,23 +378,23 @@ namespace wasm3 {
         M3Function *m_func = nullptr;
     };
 
-    inline runtime environment::new_runtime(size_t stack_size_bytes) {
+    runtime environment::new_runtime(size_t stack_size_bytes) {
         return runtime(m_env, stack_size_bytes);
     }
 
-    inline module environment::parse_module(std::istream &in) {
+    module environment::parse_module(std::istream &in) {
         return module(m_env, in);
     }
 
-    inline module environment::parse_module(const uint8_t *data, size_t size) {
+    module environment::parse_module(const uint8_t *data, size_t size) {
         return module(m_env, data, size);
     }
 
-    inline void runtime::load(module &mod) {
+    void runtime::load(module &mod) {
         mod.load_into(m_runtime.get());
     }
 
-    inline function runtime::find_function(const char *name) {
+    function runtime::find_function(const char *name) {
         return function(m_runtime, name);
     }
 
