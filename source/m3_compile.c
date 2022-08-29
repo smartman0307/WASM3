@@ -322,8 +322,11 @@ u16  GetExtraSlotForStackIndex  (IM3Compilation o, u16 i_stackIndex)
 static inline
 void  TouchSlot  (IM3Compilation o, u16 i_slot)
 {
-    // op_Entry uses this value to track and detect stack overflow
-    o->maxStackSlots = M3_MAX (o->maxStackSlots, i_slot + 1);
+    if (o->function)
+    {
+        // op_Entry uses this value to track and detect stack overflow
+        o->maxStackSlots = M3_MAX (o->maxStackSlots, i_slot + 1);
+    }
 }
 
 static inline
@@ -1340,7 +1343,7 @@ M3Result  Compile_GetGlobal  (IM3Compilation o, M3Global * i_global)
 
     IM3Operation op = Is64BitType (i_global->type) ? op_GetGlobal_s64 : op_GetGlobal_s32;
 _   (EmitOp (o, op));
-    EmitPointer (o, & i_global->i64Value);
+    EmitPointer (o, & i_global->intValue);
 _   (PushAllocatedSlotAndEmit (o, i_global->type));
 
     _catch: return result;
@@ -1363,7 +1366,7 @@ M3Result  Compile_SetGlobal  (IM3Compilation o, M3Global * i_global)
         else op = Is64BitType (type) ? op_SetGlobal_s64 : op_SetGlobal_s32;
 
 _      (EmitOp (o, op));
-        EmitPointer (o, & i_global->i64Value);
+        EmitPointer (o, & i_global->intValue);
 
         if (IsStackTopInSlot (o))
             EmitSlotOffset (o, GetStackTopSlotNumber (o));
@@ -1897,7 +1900,6 @@ _   (CompileBlock (o, blockType, i_opcode));
 static
 M3Result  CompileElseBlock  (IM3Compilation o, pc_t * o_startPC, IM3FuncType i_blockType)
 {
-    IM3CodePage savedPage = o->page;
 _try {
 
     IM3CodePage elsePage;
@@ -1905,17 +1907,19 @@ _   (AcquireCompilationCodePage (o, & elsePage));
 
     * o_startPC = GetPagePC (elsePage);
 
+    IM3CodePage savedPage = o->page;
     o->page = elsePage;
 
 _   (CompileBlock (o, i_blockType, c_waOp_else));
 
 _   (EmitOp (o, op_Branch));
     EmitPointer (o, GetPagePC (savedPage));
-} _catch:
-    if(o->page != savedPage) {
-        ReleaseCompilationCodePage (o);
-    }
+
+    ReleaseCompilationCodePage (o);
+
     o->page = savedPage;
+
+} _catch:
     return result;
 }
 
@@ -2698,13 +2702,7 @@ _try {
 _           (PopType (o, type));
         }
     }
-    else {
-        if (IsStackPolymorphic (o) && o->block.blockStackIndex + numParams > o->stackIndex) {
-            o->stackIndex = o->block.blockStackIndex;
-        } else {
-            o->stackIndex -= numParams;
-        }
-    }
+    else o->stackIndex -= numParams;
 
     u16 paramIndex = o->stackIndex;
     block->exitStackIndex = paramIndex; // consume the params at block exit
@@ -2732,7 +2730,7 @@ _           (PopType (o, type));
         u16 slot = GetSlotForStackIndex (o, paramIndex + i);
         Push (o, type, slot);
 
-        if (slot >= o->slotFirstDynamicIndex && slot != c_slotUnused)
+        if (slot >= o->slotFirstDynamicIndex)
             MarkSlotsAllocatedByType (o, slot, type);
     }
 
